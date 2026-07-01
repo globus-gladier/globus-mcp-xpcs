@@ -13,7 +13,7 @@ from pydantic import Field
 from globus_mcp.context import GlobusContext
 from globus_mcp.services.transfer.client import get_transfer_client
 from globus_mcp.services.compute.client import get_compute_client
-from globus_mcp.services.transfer.schemas import TransferSubmitResponse
+from globus_mcp.services.transfer.schemas import TransferSubmitResponse, TransferEventList, TransferEvent
 
 from globus_mcp.services.xpcs import config
 from globus_mcp.services.xpcs.schemas import XPCSBoostCorrResult
@@ -241,8 +241,44 @@ def xpcs_transfer_data(
     return TransferSubmitResponse(task_id=res.data["task_id"])
 
 
+def globus_transfer_get_task_events(
+    task_id: Annotated[str, Field(description="ID of the task")],
+    limit: Annotated[
+        int,
+        Field(default=10, le=1_000, description="Maximum number of results to return."),
+    ],
+    offset: Annotated[
+        int, Field(default=0, description="Zero based offset into the result set.")
+    ],
+    ctx: Context[ServerSession, GlobusContext],
+) -> TransferEventList:
+    """Get a list of Globus Transfer task events to monitor the status and progress of a task.
+    The events are ordered by time descending (newest first).
+    """
+    client = get_transfer_client(ctx)
+
+    try:
+        res = client.task_event_list(task_id=task_id, limit=limit, offset=offset)
+    except globus_sdk.GlobusAPIError as e:
+        raise ToolError(f"Failed to get task events: {e}") from e
+
+    events = []
+    for ev in res["DATA"]:
+        event = TransferEvent(
+            code=ev["code"],
+            is_error=ev["is_error"],
+            description=ev["description"],
+            details=ev["details"],
+            time=ev["time"],
+        )
+        events.append(event)
+
+    return TransferEventList(limit=res["limit"], offset=res["offset"], data=events)
+
+
 ALL_XPCS_TOOLS: list[Callable[..., Any]] = [
     run_xpcs_boost_corr,
     xpcs_ls_source,
     xpcs_transfer_data,
+    globus_transfer_get_task_events,
 ]
