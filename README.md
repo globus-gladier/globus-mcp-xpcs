@@ -5,23 +5,12 @@ with [Globus](https://www.globus.org/) services.
 
 ## Supported Tools
 
-### [Globus Transfer](https://docs.globus.org/api/transfer/)
+### XPCS
 
-- `globus_transfer_list_endpoints_and_collections` - List endpoints and collections the user has
-access to
-- `globus_transfer_search_endpoints_and_collections` - Use a filter string to search all endpoints
-and collections that are visible to the user
-- `globus_transfer_submit_task` - Submit a transfer task between two collections
-- `globus_transfer_get_task_events` - Get a list of task events
-- `globus_transfer_list_directory` - List contents of a directory on a collection
-
-### [Globus Compute](https://docs.globus.org/compute/)
-
-- `globus_compute_list_endpoints` - List endpoints that the user has access to
-- `globus_compute_register_python_function` - Register a Python function
-- `globus_compute_register_shell_command` - Register a shell command
-- `globus_compute_submit_task` - Submit a task to an endpoint
-- `globus_compute_get_task_status` - Retrieve the status and result of a task
+- `run_xpcs_boost_corr` - Submit a compute function that executes the `boost_corr` executable
+  using `raw` and `qmap` inputs
+- `xpcs_ls_source` - List files in an allowed source directory on the configured source endpoint
+- `xpcs_transfer_data` - Submit a transfer task for one or more source/destination pairs to eagle for processing
 
 ## Configuration
 
@@ -52,7 +41,7 @@ specific services, use the `--services` command-line flag:
       "args": [
         "globus-mcp",
         "--services",
-        "compute"
+        "xpcs"
       ]
     }
   }
