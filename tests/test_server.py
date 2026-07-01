@@ -1,8 +1,9 @@
 from unittest.mock import Mock, patch
 
 import pytest
+from fastapi import FastAPI
 
-from globus_mcp.server import main, mcp, services
+from globus_mcp.server import create_http_app, main, mcp, services
 from tests.utils import random_string
 
 

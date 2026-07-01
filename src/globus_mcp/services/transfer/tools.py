@@ -38,7 +38,9 @@ def _handle_gare(
         raise
 
 
-def _format_search_response(res: globus_sdk.IterableTransferResponse) -> TransferEndpointList:
+def _format_search_response(
+    res: globus_sdk.IterableTransferResponse,
+) -> TransferEndpointList:
     endpoints = []
     for e in res["DATA"]:
         endpoint = TransferEndpoint(
@@ -82,9 +84,12 @@ def globus_transfer_list_endpoints_and_collections(
         ),
     ],
     limit: Annotated[
-        int, Field(default=100, le=100, description="Maximum number of results to return.")
+        int,
+        Field(default=100, le=100, description="Maximum number of results to return."),
     ],
-    offset: Annotated[int, Field(default=0, description="Zero based offset into the result set.")],
+    offset: Annotated[
+        int, Field(default=0, description="Zero based offset into the result set.")
+    ],
     ctx: Context[ServerSession, GlobusContext],
 ) -> TransferEndpointList:
     """List Globus Transfer endpoints and collections that the user has access to, filtered based
@@ -110,9 +115,12 @@ def globus_transfer_search_endpoints_and_collections(
         Field(min_length=1, description=("String to match endpoint fields against.")),
     ],
     limit: Annotated[
-        int, Field(default=100, le=100, description="Maximum number of results to return.")
+        int,
+        Field(default=100, le=100, description="Maximum number of results to return."),
     ],
-    offset: Annotated[int, Field(default=0, description="Zero based offset into the result set.")],
+    offset: Annotated[
+        int, Field(default=0, description="Zero based offset into the result set.")
+    ],
     ctx: Context[ServerSession, GlobusContext],
 ) -> TransferEndpointList:
     """Use a filter string to search all Globus Transfer endpoints and collections that
@@ -134,7 +142,9 @@ def globus_transfer_search_endpoints_and_collections(
 
 
 def globus_transfer_submit_task(
-    source_collection_id: Annotated[str, Field(description="ID of the source collection")],
+    source_collection_id: Annotated[
+        str, Field(description="ID of the source collection")
+    ],
     destination_collection_id: Annotated[
         str, Field(description="ID of the destination collection")
     ],
@@ -175,9 +185,12 @@ def globus_transfer_submit_task(
 def globus_transfer_get_task_events(
     task_id: Annotated[str, Field(description="ID of the task")],
     limit: Annotated[
-        int, Field(default=10, le=1_000, description="Maximum number of results to return.")
+        int,
+        Field(default=10, le=1_000, description="Maximum number of results to return."),
     ],
-    offset: Annotated[int, Field(default=0, description="Zero based offset into the result set.")],
+    offset: Annotated[
+        int, Field(default=0, description="Zero based offset into the result set.")
+    ],
     ctx: Context[ServerSession, GlobusContext],
 ) -> TransferEventList:
     """Get a list of Globus Transfer task events to monitor the status and progress of a task.
@@ -208,9 +221,14 @@ def globus_transfer_list_directory(
     collection_id: Annotated[str, Field(description="ID of the collection")],
     path: Annotated[str, Field(description="Path to a directory")],
     limit: Annotated[
-        int, Field(default=100, le=100_000, description="Maximum number of results to return.")
+        int,
+        Field(
+            default=100, le=100_000, description="Maximum number of results to return."
+        ),
     ],
-    offset: Annotated[int, Field(default=0, description="Zero based offset into the result set.")],
+    offset: Annotated[
+        int, Field(default=0, description="Zero based offset into the result set.")
+    ],
     ctx: Context[ServerSession, GlobusContext],
 ) -> TransferFileList:
     """List contents of a directory on a Globus Transfer collection"""

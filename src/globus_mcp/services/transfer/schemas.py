@@ -7,7 +7,9 @@ class TransferEndpoint(BaseModel):
     owner_id: str = Field(description="ID of the endpoint owner")
     owner_string: str = Field(description="Identity name of the endpoint owner")
     type: str = Field(description="The type of endpoint")
-    description: str | None = Field(default=None, description="A description of the endpoint")
+    description: str | None = Field(
+        default=None, description="A description of the endpoint"
+    )
 
 
 class TransferEvent(BaseModel):
@@ -29,7 +31,9 @@ class TransferSubmitResponse(BaseModel):
 
 class TransferFile(BaseModel):
     name: str = Field(description="Name of the file")
-    type: str = Field(description="The type of the entry: dir, file, or invalid_symlink.")
+    type: str = Field(
+        description="The type of the entry: dir, file, or invalid_symlink."
+    )
     link_target: str | None = Field(
         default=None,
         description=(
@@ -46,7 +50,9 @@ class TransferFile(BaseModel):
         default=None,
         description="The group owning the file or directory, if applicable.",
     )
-    permissions: str = Field(description="The unix permissions, as an octal mode string.")
+    permissions: str = Field(
+        description="The unix permissions, as an octal mode string."
+    )
     size: int = Field(description="The file size in bytes.")
     last_modified: str = Field(
         description=(
