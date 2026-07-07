@@ -9,7 +9,6 @@ from globus_mcp.services.xpcs.registry import register_xpcs_tools
 
 # Used for testing, should be removed
 from globus_mcp.auth import get_globus_app
-from globus_mcp.services.xpcs.tools import xpcs_ls_source
 
 mcp = FastMCP("Globus MCP Server", lifespan=lifespan)
 
@@ -61,11 +60,11 @@ def main() -> None:
                 lifespan_context=LifespanContext(app=get_globus_app())
             )
         )
-        data = xpcs_ls_source(
-            "/8IDI/2025-2/tempus202507-merge/data/converted/Cb0058_D100_a0011_f2000000/",
-            ctx=ctx,
-        )
-        print(data)
+        # data = xpcs_ls_source(
+        #     "/8IDI/2025-2/tempus202507-merge/data/converted/Cb0058_D100_a0011_f2000000/",
+        #     ctx=ctx,
+        # )
+        # print(data)
         return
 
     args = parse_arguments()
