@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from http import HTTPStatus
+import pathlib
 from typing import Annotated, Any, Literal
 
 import globus_sdk
@@ -8,6 +9,7 @@ from mcp.server.fastmcp.exceptions import ToolError
 from mcp.server.session import ServerSession
 from pydantic import Field
 
+from globus_mcp import config
 from globus_mcp.context import GlobusContext
 from globus_mcp.services.transfer.client import get_transfer_client
 from globus_mcp.services.transfer.schemas import (
@@ -60,6 +62,67 @@ def _format_search_response(
     )
 
 
+def _normalize_posix_path(path: str) -> str:
+    normalized = str(pathlib.PurePosixPath(path))
+    if not normalized.startswith("/"):
+        normalized = f"/{normalized}"
+    return normalized.rstrip("/") or "/"
+
+
+def _resolve_allowed_basepath(collection: dict[str, Any], allowed_basepath: str) -> str:
+    collection_basepath = str(collection.get("collection_basepath", "/"))
+    if allowed_basepath.startswith("/"):
+        resolved = allowed_basepath
+    else:
+        resolved = str(
+            pathlib.PurePosixPath(collection_basepath) / allowed_basepath.lstrip("/")
+        )
+    return _normalize_posix_path(resolved)
+
+
+def _collection_has_access(collection_id: str, path: str, permission: str) -> bool:
+    collection = config.get_collection(collection_id)
+    if collection is None:
+        return False
+
+    normalized_path = _normalize_posix_path(path)
+    for basepath in collection.get("allowed_basepaths", []):
+        permissions = str(basepath.get("permissions", ""))
+        if permission not in permissions:
+            continue
+
+        normalized_basepath = _resolve_allowed_basepath(
+            collection, str(basepath["path"])
+        )
+        if normalized_basepath == "/":
+            return True
+
+        if normalized_path == normalized_basepath:
+            return True
+
+        if normalized_path.startswith(f"{normalized_basepath}/"):
+            return True
+
+    return False
+
+
+def _assert_collection_path_allowed(collection_id: str, path: str, permission: str) -> None:
+    collection = config.get_collection(collection_id)
+    if collection is None:
+        raise ToolError(f"Unknown collection_id '{collection_id}'")
+
+    if not _collection_has_access(collection_id, path, permission):
+        allowed_paths = [
+            _resolve_allowed_basepath(collection, str(basepath["path"]))
+            for basepath in collection.get("allowed_basepaths", [])
+            if permission in str(basepath.get("permissions", ""))
+        ]
+        raise ToolError(
+            f"Path '{path}' is not allowed for collection '{collection_id}'. "
+            f"Allowed basepaths for permission '{permission}': {allowed_paths}"
+        )
+
+
 def globus_transfer_list_endpoints_and_collections(
     filter_scope: Annotated[
         Literal[
@@ -76,6 +139,7 @@ def globus_transfer_list_endpoints_and_collections(
                 " Options:"
                 " my-endpoints (owned by the user),"
                 " administered-by-me (user has admin role, superset of my-endpoints),"
+
                 " shared-with-me (shared with user),"
                 " shared-by-me (guest collections where user is admin or access manager),"
                 " recently-used (recently used by user),"
@@ -167,6 +231,9 @@ def globus_transfer_submit_task(
     """
     client = get_transfer_client(ctx)
 
+    _assert_collection_path_allowed(source_collection_id, source_path, "r")
+    _assert_collection_path_allowed(destination_collection_id, destination_path, "w")
+
     data = globus_sdk.TransferData(
         source_endpoint=source_collection_id,
         destination_endpoint=destination_collection_id,
@@ -233,6 +300,8 @@ def globus_transfer_list_directory(
 ) -> TransferFileList:
     """List contents of a directory on a Globus Transfer collection"""
     client = get_transfer_client(ctx)
+
+    _assert_collection_path_allowed(collection_id, path, "r")
 
     try:
         res = client.operation_ls(collection_id, path=path, limit=limit, offset=offset)

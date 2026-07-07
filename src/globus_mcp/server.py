@@ -19,7 +19,7 @@ service_registry = {
     "transfer": register_transfer,
     "xpcs": register_xpcs_tools,
 }
-services = ["xpcs"]
+services = ["transfer", "xpcs"]
 
 
 def parse_arguments() -> argparse.Namespace:
