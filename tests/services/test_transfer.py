@@ -246,28 +246,24 @@ def test_globus_transfer_search_endpoints_and_collections_api_error(
         )
 
 
-def test_globus_transfer_submit_task(mock_ctx: Mock, mock_client: Mock, mock_handle_gare: Mock):
-    source_collection_id = config.GLOBUS_ENDPOINT_VOYAGER
-    destination_collection_id = config.GLOBUS_ENDPOINT_EAGLE_APS_DATA_PROCESSING
-    source_path = "/8IDI/2025-2/tempus202507-merge/data/converted/sample.h5"
-    destination_path = "/xpcs_staging/agentic-testing/sample.h5"
+def test_globus_transfer_submit_task(mock_ctx: Mock, mock_client: Mock, mock_handle_gare: Mock, mock_config: dict[str, Any]):
     label = random_string()
     task_id = str(uuid.uuid4())
 
     transfer_data = TransferData(
-        source_endpoint=source_collection_id,
-        destination_endpoint=destination_collection_id,
+        source_endpoint=mock_config["COLLECTIONS"][0]["uuid"],
+        destination_endpoint=mock_config["COLLECTIONS"][1]["uuid"],
         label=label,
     )
-    transfer_data.add_item(source_path=source_path, destination_path=destination_path)
+    transfer_data.add_item(source_path="/foo-read-write-directory", destination_path="/bar-read-write-directory")
 
     mock_handle_gare.return_value = Mock(data={"task_id": task_id})
 
     res = globus_transfer_submit_task(
-        source_collection_id=source_collection_id,
-        destination_collection_id=destination_collection_id,
-        source_path=source_path,
-        destination_path=destination_path,
+        source_collection_id=mock_config["COLLECTIONS"][0]["uuid"],
+        destination_collection_id=mock_config["COLLECTIONS"][1]["uuid"],
+        source_path="/foo-read-write-directory",
+        destination_path="/bar-read-write-directory",
         label=label,
         ctx=mock_ctx,
     )
@@ -276,26 +272,26 @@ def test_globus_transfer_submit_task(mock_ctx: Mock, mock_client: Mock, mock_han
     assert res.task_id == task_id
 
 
-def test_globus_transfer_submit_task_api_error(mock_ctx: Mock, mock_handle_gare: Mock):
+def test_globus_transfer_submit_task_api_error(mock_ctx: Mock, mock_handle_gare: Mock, mock_config: dict[str, Any]):
     mock_handle_gare.side_effect = GlobusAPIError(r=MagicMock())
     with pytest.raises(ToolError, match="Failed to submit transfer"):
         globus_transfer_submit_task(
-            source_collection_id=config.GLOBUS_ENDPOINT_VOYAGER,
-            destination_collection_id=config.GLOBUS_ENDPOINT_EAGLE_APS_DATA_PROCESSING,
-            source_path="/8IDI/2025-2/tempus202507-merge/data/converted/sample.h5",
-            destination_path="/xpcs_staging/agentic-testing/sample.h5",
+            source_collection_id=mock_config["COLLECTIONS"][0]["uuid"],
+            destination_collection_id=mock_config["COLLECTIONS"][1]["uuid"],
+            source_path="/foo-read-write-directory",
+            destination_path="/bar-read-write-directory",
             label=random_string(),
             ctx=mock_ctx,
         )
 
 
-def test_globus_transfer_submit_task_rejects_disallowed_paths(mock_ctx: Mock):
+def test_globus_transfer_submit_task_rejects_disallowed_paths(mock_ctx: Mock, mock_config: dict[str, Any]):
     with pytest.raises(ToolError, match="is not allowed"):
         globus_transfer_submit_task(
-            source_collection_id=config.GLOBUS_ENDPOINT_VOYAGER,
-            destination_collection_id=config.GLOBUS_ENDPOINT_EAGLE_APS_DATA_PROCESSING,
+            source_collection_id=mock_config["COLLECTIONS"][0]["uuid"],
+            destination_collection_id=mock_config["COLLECTIONS"][1]["uuid"],
             source_path="/not/allowed/source.h5",
-            destination_path="/xpcs_staging/agentic-testing/sample.h5",
+            destination_path="/bar-read-write-directory",
             label=random_string(),
             ctx=mock_ctx,
         )
@@ -345,9 +341,9 @@ def test_globus_transfer_get_task_events_api_error(mock_ctx: Mock, mock_client: 
         globus_transfer_get_task_events(task_id=str(uuid.uuid4()), limit=10, offset=0, ctx=mock_ctx)
 
 
-def test_globus_transfer_list_directory(mock_ctx: Mock, mock_client: Mock):
-    collection_id = config.GLOBUS_ENDPOINT_VOYAGER
-    path = "/8IDI/2025-2/tempus202507-merge/data/converted/sample"
+def test_globus_transfer_list_directory(mock_ctx: Mock, mock_client: Mock, mock_config: dict[str, Any]):
+    collection_id = mock_config["COLLECTIONS"][0]["uuid"]
+    path = "/foo-read-write-directory"
 
     res_data: dict[str, Any] = {
         "limit": random.randint(1, 1000),
@@ -394,12 +390,12 @@ def test_globus_transfer_list_directory(mock_ctx: Mock, mock_client: Mock):
         assert file.last_modified == file_data["last_modified"]
 
 
-def test_globus_transfer_list_directory_api_error(mock_ctx: Mock, mock_client: Mock):
+def test_globus_transfer_list_directory_api_error(mock_ctx: Mock, mock_client: Mock, mock_config: dict[str, Any]):
     mock_client.operation_ls.side_effect = GlobusAPIError(r=MagicMock())
     with pytest.raises(ToolError, match="Failed to list directory contents"):
         globus_transfer_list_directory(
-            collection_id=config.GLOBUS_ENDPOINT_VOYAGER,
-            path="/8IDI/2025-2/tempus202507-merge/data/converted/sample",
+            collection_id=mock_config["COLLECTIONS"][0]["uuid"],
+            path="/foo-read-write-directory",
             limit=100,
             offset=0,
             ctx=mock_ctx,
