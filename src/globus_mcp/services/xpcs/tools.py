@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 from globus_compute_sdk import Executor
 from mcp.server.fastmcp import Context
@@ -139,7 +139,7 @@ def run_xpcs_boost_corr(
     try:
         client = get_compute_client(ctx)
         with Executor(endpoint_id=compute_endpoint_id, client=client) as executor:
-            future = executor.submit(
+            future = executor.submit(  # type: ignore[no-untyped-call]
                 _compute_run_boost_corr_executable,
                 raw=raw,
                 qmap=qmap,
@@ -153,7 +153,7 @@ def run_xpcs_boost_corr(
 
 def _get_boost_corr_metadata(
     corr_results: str,
-):
+) -> dict[str, Any]:
     """
     Takes the corr results file and generates metadata and plots at a given location. Optionally
     allows for specifying extra metadata if desired.
@@ -173,8 +173,8 @@ def _get_boost_corr_metadata(
     import time
     from datetime import datetime
 
-    from xpcs_webplot import __version__ as webplot_version
-    from xpcs_webplot.plot_images import XF
+    from xpcs_webplot import __version__ as webplot_version  # type: ignore[import-not-found]
+    from xpcs_webplot.plot_images import XF  # type: ignore[import-not-found]
 
     metadata_fetch_start = time.time()
     # webplot_output = hdf2web_safe(
@@ -242,11 +242,11 @@ def get_boost_corr_metadata(
     try:
         client = get_compute_client(ctx)
         with Executor(endpoint_id=compute_endpoint_id, client=client) as executor:
-            future = executor.submit(
+            future = executor.submit(  # type: ignore[no-untyped-call]
                 _get_boost_corr_metadata,
                 corr_results=corr_results,
             )
-            return XPCSBoostCorrResult.model_validate(future.result())
+            return cast(dict[str, Any], future.result())
     except Exception as e:
         raise ToolError(f"Failed to run boost_corr compute function: {e}") from e
 
@@ -263,7 +263,7 @@ def get_generic_metadata(
     def _get_generic_metadata(corr_results: str) -> dict[str, Any]:
         import time
 
-        import h5py
+        import h5py  # type: ignore[import-not-found]
 
         def _to_jsonable(value: Any) -> Any:
             # Handle common h5py/numpy scalar wrappers
@@ -319,12 +319,12 @@ def get_generic_metadata(
 
     try:
         client = get_compute_client(ctx)
-        with Executor(endpoint_id=config.GLOBUS_COMPUTE_ENDPOINT, client=client) as executor:
-            future = executor.submit(
+        with Executor(endpoint_id=config.DEFAULT_COMPUTE_ENDPOINT, client=client) as executor:
+            future = executor.submit(  # type: ignore[no-untyped-call]
                 _get_generic_metadata,
                 corr_results=corr_results,
             )
-            return future.result()
+            return cast(dict[str, Any], future.result())
     except Exception as e:
         raise ToolError(f"Failed to run boost_corr compute function: {e}") from e
 

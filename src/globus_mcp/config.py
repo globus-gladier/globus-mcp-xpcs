@@ -7,7 +7,7 @@ from typing import Any
 # GLOBUS_ENDPOINT_EAGLE_APS_DATA_PROCESSING = "98d26f35-e5d5-4edd-becf-a75520656c64"
 # GLOBUS_COMPUTE_ENDPOINT = "f8f4692a-0ab7-40d0-b256-ba5b82b5e2ec"
 DEFAULT_COMPUTE_ENDPOINT = "f8f4692a-0ab7-40d0-b256-ba5b82b5e2ec"
-COMPUTE_ENDPOINTS = [
+COMPUTE_ENDPOINTS: list[dict[str, Any]] = [
     {
         "uuid": "f8f4692a-0ab7-40d0-b256-ba5b82b5e2ec",
         "display_name": "Globus Compute Endpoint",
@@ -27,7 +27,7 @@ COMPUTE_ENDPOINTS = [
     }
 ]
 
-COLLECTIONS = [
+COLLECTIONS: list[dict[str, Any]] = [
     {
         "type": "collection",
         "uuid": "ed03fe07-632e-47a9-9df7-9b8b236ac0b4",
