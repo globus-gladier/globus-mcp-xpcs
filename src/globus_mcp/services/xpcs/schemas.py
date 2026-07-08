@@ -3,9 +3,7 @@ from pydantic import BaseModel, Field
 
 class CollectionBasepath(BaseModel):
     path: str = Field(description="Allowed filesystem path on the collection.")
-    permissions: str = Field(
-        description="Permission flags for this path, e.g. 'r', 'w', or 'rw'."
-    )
+    permissions: str = Field(description="Permission flags for this path, e.g. 'r', 'w', or 'rw'.")
 
 
 class CollectionInfo(BaseModel):
@@ -22,9 +20,7 @@ class CollectionInfo(BaseModel):
 
 class ComputeEndpointBasepath(BaseModel):
     path: str = Field(description="Allowed filesystem path on the endpoint.")
-    permissions: str = Field(
-        description="Permission flags for this path, e.g. 'r', 'w', or 'rw'."
-    )
+    permissions: str = Field(description="Permission flags for this path, e.g. 'r', 'w', or 'rw'.")
 
 
 class ComputeEndpointInfo(BaseModel):
@@ -38,9 +34,7 @@ class ComputeEndpointInfo(BaseModel):
 
 class XPCSBoostCorrResult(BaseModel):
     result: str = Field(description="Task outcome, typically 'SUCCEEDED' or 'FAILED'.")
-    returncode: int = Field(
-        description="Exit code returned by the boost_corr executable."
-    )
+    returncode: int = Field(description="Exit code returned by the boost_corr executable.")
     execution_time_seconds: float = Field(description="Elapsed runtime in seconds.")
     stdout: str | None = Field(
         default=None,

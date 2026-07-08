@@ -1,6 +1,6 @@
+import pathlib
 from collections.abc import Callable
 from http import HTTPStatus
-import pathlib
 from typing import Annotated, Any, Literal
 
 import globus_sdk
@@ -74,9 +74,7 @@ def _resolve_allowed_basepath(collection: dict[str, Any], allowed_basepath: str)
     if allowed_basepath.startswith("/"):
         resolved = allowed_basepath
     else:
-        resolved = str(
-            pathlib.PurePosixPath(collection_basepath) / allowed_basepath.lstrip("/")
-        )
+        resolved = str(pathlib.PurePosixPath(collection_basepath) / allowed_basepath.lstrip("/"))
     return _normalize_posix_path(resolved)
 
 
@@ -91,9 +89,7 @@ def _collection_has_access(collection_id: str, path: str, permission: str) -> bo
         if permission not in permissions:
             continue
 
-        normalized_basepath = _resolve_allowed_basepath(
-            collection, str(basepath["path"])
-        )
+        normalized_basepath = _resolve_allowed_basepath(collection, str(basepath["path"]))
         if normalized_basepath == "/":
             return True
 
@@ -139,7 +135,6 @@ def globus_transfer_list_endpoints_and_collections(
                 " Options:"
                 " my-endpoints (owned by the user),"
                 " administered-by-me (user has admin role, superset of my-endpoints),"
-
                 " shared-with-me (shared with user),"
                 " shared-by-me (guest collections where user is admin or access manager),"
                 " recently-used (recently used by user),"
@@ -151,9 +146,7 @@ def globus_transfer_list_endpoints_and_collections(
         int,
         Field(default=100, le=100, description="Maximum number of results to return."),
     ],
-    offset: Annotated[
-        int, Field(default=0, description="Zero based offset into the result set.")
-    ],
+    offset: Annotated[int, Field(default=0, description="Zero based offset into the result set.")],
     ctx: Context[ServerSession, GlobusContext],
 ) -> TransferEndpointList:
     """List Globus Transfer endpoints and collections that the user has access to, filtered based
@@ -182,9 +175,7 @@ def globus_transfer_search_endpoints_and_collections(
         int,
         Field(default=100, le=100, description="Maximum number of results to return."),
     ],
-    offset: Annotated[
-        int, Field(default=0, description="Zero based offset into the result set.")
-    ],
+    offset: Annotated[int, Field(default=0, description="Zero based offset into the result set.")],
     ctx: Context[ServerSession, GlobusContext],
 ) -> TransferEndpointList:
     """Use a filter string to search all Globus Transfer endpoints and collections that
@@ -206,9 +197,7 @@ def globus_transfer_search_endpoints_and_collections(
 
 
 def globus_transfer_submit_task(
-    source_collection_id: Annotated[
-        str, Field(description="ID of the source collection")
-    ],
+    source_collection_id: Annotated[str, Field(description="ID of the source collection")],
     destination_collection_id: Annotated[
         str, Field(description="ID of the destination collection")
     ],
@@ -255,9 +244,7 @@ def globus_transfer_get_task_events(
         int,
         Field(default=10, le=1_000, description="Maximum number of results to return."),
     ],
-    offset: Annotated[
-        int, Field(default=0, description="Zero based offset into the result set.")
-    ],
+    offset: Annotated[int, Field(default=0, description="Zero based offset into the result set.")],
     ctx: Context[ServerSession, GlobusContext],
 ) -> TransferEventList:
     """Get a list of Globus Transfer task events to monitor the status and progress of a task.
@@ -289,13 +276,9 @@ def globus_transfer_list_directory(
     path: Annotated[str, Field(description="Path to a directory")],
     limit: Annotated[
         int,
-        Field(
-            default=100, le=100_000, description="Maximum number of results to return."
-        ),
+        Field(default=100, le=100_000, description="Maximum number of results to return."),
     ],
-    offset: Annotated[
-        int, Field(default=0, description="Zero based offset into the result set.")
-    ],
+    offset: Annotated[int, Field(default=0, description="Zero based offset into the result set.")],
     ctx: Context[ServerSession, GlobusContext],
 ) -> TransferFileList:
     """List contents of a directory on a Globus Transfer collection"""

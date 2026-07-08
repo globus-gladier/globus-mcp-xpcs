@@ -9,7 +9,6 @@ from globus_sdk import GlobusAPIError, IterableTransferResponse, TransferClient,
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 
-from globus_mcp import config
 from globus_mcp.context import GlobusContext
 from globus_mcp.server import service_registry
 from globus_mcp.services.transfer.client import get_transfer_client
@@ -246,7 +245,9 @@ def test_globus_transfer_search_endpoints_and_collections_api_error(
         )
 
 
-def test_globus_transfer_submit_task(mock_ctx: Mock, mock_client: Mock, mock_handle_gare: Mock, mock_config: dict[str, Any]):
+def test_globus_transfer_submit_task(
+    mock_ctx: Mock, mock_client: Mock, mock_handle_gare: Mock, mock_config: dict[str, Any]
+):
     label = random_string()
     task_id = str(uuid.uuid4())
 
@@ -255,7 +256,9 @@ def test_globus_transfer_submit_task(mock_ctx: Mock, mock_client: Mock, mock_han
         destination_endpoint=mock_config["COLLECTIONS"][1]["uuid"],
         label=label,
     )
-    transfer_data.add_item(source_path="/foo-read-write-directory", destination_path="/bar-read-write-directory")
+    transfer_data.add_item(
+        source_path="/foo-read-write-directory", destination_path="/bar-read-write-directory"
+    )
 
     mock_handle_gare.return_value = Mock(data={"task_id": task_id})
 
@@ -272,7 +275,9 @@ def test_globus_transfer_submit_task(mock_ctx: Mock, mock_client: Mock, mock_han
     assert res.task_id == task_id
 
 
-def test_globus_transfer_submit_task_api_error(mock_ctx: Mock, mock_handle_gare: Mock, mock_config: dict[str, Any]):
+def test_globus_transfer_submit_task_api_error(
+    mock_ctx: Mock, mock_handle_gare: Mock, mock_config: dict[str, Any]
+):
     mock_handle_gare.side_effect = GlobusAPIError(r=MagicMock())
     with pytest.raises(ToolError, match="Failed to submit transfer"):
         globus_transfer_submit_task(
@@ -285,7 +290,9 @@ def test_globus_transfer_submit_task_api_error(mock_ctx: Mock, mock_handle_gare:
         )
 
 
-def test_globus_transfer_submit_task_rejects_disallowed_paths(mock_ctx: Mock, mock_config: dict[str, Any]):
+def test_globus_transfer_submit_task_rejects_disallowed_paths(
+    mock_ctx: Mock, mock_config: dict[str, Any]
+):
     with pytest.raises(ToolError, match="is not allowed"):
         globus_transfer_submit_task(
             source_collection_id=mock_config["COLLECTIONS"][0]["uuid"],
@@ -341,7 +348,9 @@ def test_globus_transfer_get_task_events_api_error(mock_ctx: Mock, mock_client: 
         globus_transfer_get_task_events(task_id=str(uuid.uuid4()), limit=10, offset=0, ctx=mock_ctx)
 
 
-def test_globus_transfer_list_directory(mock_ctx: Mock, mock_client: Mock, mock_config: dict[str, Any]):
+def test_globus_transfer_list_directory(
+    mock_ctx: Mock, mock_client: Mock, mock_config: dict[str, Any]
+):
     collection_id = mock_config["COLLECTIONS"][0]["uuid"]
     path = "/foo-read-write-directory"
 
@@ -390,7 +399,9 @@ def test_globus_transfer_list_directory(mock_ctx: Mock, mock_client: Mock, mock_
         assert file.last_modified == file_data["last_modified"]
 
 
-def test_globus_transfer_list_directory_api_error(mock_ctx: Mock, mock_client: Mock, mock_config: dict[str, Any]):
+def test_globus_transfer_list_directory_api_error(
+    mock_ctx: Mock, mock_client: Mock, mock_config: dict[str, Any]
+):
     mock_client.operation_ls.side_effect = GlobusAPIError(r=MagicMock())
     with pytest.raises(ToolError, match="Failed to list directory contents"):
         globus_transfer_list_directory(

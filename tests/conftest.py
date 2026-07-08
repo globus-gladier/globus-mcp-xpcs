@@ -71,7 +71,7 @@ def mock_config(monkeypatch):
                 {
                     "path": "/bar-read-only-directory/",
                     "permissions": "r",
-                }
+                },
             ],
         },
     ]

@@ -55,7 +55,7 @@ COLLECTIONS = [
             {
                 "path": "/xpcs_staging/",
                 "permissions": "r",
-            }
+            },
         ],
     },
 ]

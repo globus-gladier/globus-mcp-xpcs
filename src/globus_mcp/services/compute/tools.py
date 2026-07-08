@@ -56,15 +56,11 @@ def globus_compute_list_endpoints(
 
 
 def globus_compute_register_python_function(
-    function_code: Annotated[
-        str, Field(description="The text of the Python function source code")
-    ],
+    function_code: Annotated[str, Field(description="The text of the Python function source code")],
     function_name: Annotated[str, Field(description="The name of the Python function")],
     description: Annotated[
         str | None,
-        Field(
-            default=None, description="An optional description of the Python function"
-        ),
+        Field(default=None, description="An optional description of the Python function"),
     ],
     public: Annotated[
         bool,
@@ -190,9 +186,7 @@ def globus_compute_submit_task(
     """
     client = get_compute_client(ctx)
 
-    batch = client.create_batch(
-        result_serializers=[validate_strategylike(JSONData).import_path]
-    )
+    batch = client.create_batch(result_serializers=[validate_strategylike(JSONData).import_path])
     batch.add(function_id, function_args, function_kwargs)
 
     try:
