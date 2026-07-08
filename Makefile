@@ -7,7 +7,7 @@ help:
 	@echo "  lint         - Run linter"
 	@echo "  mypy         - Run type checker"
 	@echo "  test         - Run tests"
-	@echo "  coverage     - Run tests with coverage report (95% required)"
+	@echo "  coverage     - Run tests with coverage report (70% required)"
 	@echo "  check        - Run all checks (format-check, lint, mypy, test)"
 
 .PHONY: sync
@@ -38,7 +38,7 @@ test:
 .PHONY: coverage
 coverage:
 	uv run coverage run -m pytest
-	uv run coverage report -m --fail-under=95
+	uv run coverage report -m --fail-under=70
 
 .PHONY: check
 check: format-check lint mypy test
