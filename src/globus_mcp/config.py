@@ -70,3 +70,10 @@ def get_collection(collection_id: str) -> dict[str, Any] | None:
 
 def iter_collection_ids() -> Iterable[str]:
     return (collection["uuid"] for collection in COLLECTIONS)
+
+
+def get_endpoint(endpoint_id: str) -> dict[str, Any] | None:
+    for endpoint in COMPUTE_ENDPOINTS:
+        if endpoint["uuid"] == endpoint_id:
+            return endpoint
+    return None
