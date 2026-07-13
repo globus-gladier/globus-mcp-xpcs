@@ -41,7 +41,8 @@ specific services, use the `--services` command-line flag:
       "args": [
         "globus-mcp",
         "--services",
-        "xpcs"
+        "xpcs",
+        "transfer"
       ]
     }
   }

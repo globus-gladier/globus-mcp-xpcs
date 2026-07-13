@@ -9,7 +9,7 @@ from typing import Any
 DEFAULT_COMPUTE_ENDPOINT = "f8f4692a-0ab7-40d0-b256-ba5b82b5e2ec"
 COMPUTE_ENDPOINTS: list[dict[str, Any]] = [
     {
-        "uuid": "f8f4692a-0ab7-40d0-b256-ba5b82b5e2ec",
+        "uuid": "d88919ea-026a-493e-9124-fe3c46defa54",
         "display_name": "Globus Compute Endpoint",
         "description": "Globus Compute Endpoint for XPCS processing",
         "allowed_basepaths": [
