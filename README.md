@@ -9,8 +9,22 @@ with [Globus](https://www.globus.org/) services.
 
 - `run_xpcs_boost_corr` - Submit a compute function that executes the `boost_corr` executable
   using `raw` and `qmap` inputs
-- `xpcs_ls_source` - List files in an allowed source directory on the configured source endpoint
-- `xpcs_transfer_data` - Submit a transfer task for one or more source/destination pairs to eagle for processing
+- `get_boost_corr_metadata` - Generate metadata from a `boost_corr` output HDF file
+- `get_generic_metadata` - Read all HDF5 attributes from an output file in a JSON-serializable format
+- `list_xpcs_collections` - List configured XPCS collections and allowed basepaths/permissions
+- `list_xpcs_compute_endpoints` - List configured XPCS compute endpoints and allowed basepaths/permissions
+
+### [Globus Transfer](https://docs.globus.org/api/transfer/)
+
+- `globus_transfer_list_endpoints_and_collections` - List endpoints and collections the user can access
+- `globus_transfer_search_endpoints_and_collections` - Search visible endpoints and collections
+- `globus_transfer_submit_task` - Submit a transfer task, await completion/timeout, and return status plus recent events
+- `globus_transfer_get_task_events` - Get task events for transfer progress and troubleshooting
+- `globus_transfer_get_task_progress` - Wait for transfer progress and return task status plus recent events
+- `globus_transfer_list_directory` - List directory contents on a collection
+
+Notes:
+This README intentionally documents only XPCS and Transfer tools. Compute service tools are omitted.
 
 ## Configuration
 
