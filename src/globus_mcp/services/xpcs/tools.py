@@ -131,14 +131,47 @@ def run_xpcs_boost_corr(
         Field(description="Compute endpoint ID where boost_corr should run"),
     ] = config.DEFAULT_COMPUTE_ENDPOINT,
 ) -> XPCSBoostCorrResult:
-    """Submit a compute function that executes boost_corr directly.
+    """Run Boost Corr on the raw dataset with the given qmap parateter file.
 
-    This sends a Python compute function to the selected endpoint, where it invokes
-    the boost_corr executable with raw/qmap plus any extra boost_corr parameters.
+    Make sure source data is on the compute endpoint filesystem before running boost_corr. The boost_corr executable will not transfer data for you.
+
+    A Boost Corr dataset consists of a data file and a metadata file within a directory. 
+    Never specify the metadata file as the raw input, only the data file. The metadata file is
+    automatically detected by the boost_corr executable, typically has a filename ending in "_metadata.hdf"
+    There are multiple raw data types that boost corr supports::
+
+        1. eiger4m/lambda2m/rigaku(slow mode) .h5
+        2. lambda750k, legacy .imm file. we no longer use it at the beamline.
+        3. rigaku500k (fast mode), one .bin file
+        4. rigaku3m (fast mode), .bin.xxx file, xxx in [001, ... 006] Always choose the first 001 file as raw
+
+    Boost corr automatically creates an output file in the same directory as the raw input file, named the same as the
+    raw input with "_results" appended to the filename. For example: 
+
+    Cb0058_D100_a0011_f2000000_r00001_t76ns.hdf outputs Cb0058_D100_a0011_f2000000_r00001_t76ns_results.hdf
+
+    A source dataset raw file may look like this: 
+
+    /8IDI/2025-2/tempus202507-merge/data/Ea0234_EP5_a0115_f2000000/Ea0234_EP5_a0115_f2000000_r00001_t76ns/Ea0234_EP5_a0115_f2000000_r00001_t76ns.bin
+
+    Where:
+
+    * 2025-2 is the run cycle, in YYYY-N format, where in is the trimester of the year
+    * tempus202507-merge is the experiment,
+    * Ea0234_EP5_a0115_f2000000 is the experiment subdirectory
+    * Ea0234_EP5_a0115_f2000000_r00001_t76ns is the dataset
+    * Ea0234_EP5_a0115_f2000000_r00001_t76ns.bin is the raw data file.
+
+    There may be additional subdirectories in the path, but datasets should always contain the raw data file and the metadata file. 
+
+    Always verify that the dataset is on the compute endpoint filesystem, and transfer it from the source collection to the compute endpoint filesystem before running boost_corr. The boost_corr executable will not transfer data for you.
+
+    For example, you cannot run boost corr on data in /8IDI/2025-2/, you must transfer it to eagle first.
     """
     try:
         client = get_compute_client(ctx)
-        with Executor(endpoint_id=compute_endpoint_id, client=client) as executor:
+        endpoint_config = config.get_endpoint(compute_endpoint_id)
+        with Executor(endpoint_id=compute_endpoint_id, client=client, user_endpoint_config=endpoint_config["config"]) as executor:
             future = executor.submit(  # type: ignore[no-untyped-call]
                 _compute_run_boost_corr_executable,
                 raw=raw,
