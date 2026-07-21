@@ -2,7 +2,7 @@ import random
 import uuid
 from http import HTTPStatus
 from typing import Any
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 from globus_sdk import GlobusAPIError, IterableTransferResponse, TransferClient, TransferData
@@ -18,6 +18,7 @@ from globus_mcp.services.transfer.tools import (
     _format_search_response,
     _handle_gare,
     globus_transfer_get_task_events,
+    globus_transfer_get_task_progress,
     globus_transfer_list_directory,
     globus_transfer_list_endpoints_and_collections,
     globus_transfer_search_endpoints_and_collections,
@@ -245,7 +246,8 @@ def test_globus_transfer_search_endpoints_and_collections_api_error(
         )
 
 
-def test_globus_transfer_submit_task(
+@pytest.mark.asyncio
+async def test_globus_transfer_submit_task(
     mock_ctx: Mock, mock_client: Mock, mock_handle_gare: Mock, mock_config: dict[str, Any]
 ):
     label = random_string()
@@ -257,48 +259,104 @@ def test_globus_transfer_submit_task(
         label=label,
     )
     transfer_data.add_item(
-        source_path="/foo-read-write-directory", destination_path="/bar-read-write-directory"
+        source_path="/foo-read-write-directory",
+        destination_path="/bar-read-write-directory",
+        recursive=True,
+    )
+    transfer_data.add_item(
+        source_path="/foo-read-write-directory/nested",
+        destination_path="/bar-read-write-directory/nested",
+        recursive=False,
     )
 
     mock_handle_gare.return_value = Mock(data={"task_id": task_id})
+    mock_client.get_task.side_effect = [
+        Mock(data={"task_id": task_id, "status": "ACTIVE", "files_transferred": 0}),
+        Mock(data={"task_id": task_id, "status": "SUCCEEDED", "files_transferred": 2}),
+    ]
+    mock_client.task_event_list.return_value = {
+        "limit": 10,
+        "offset": 0,
+        "DATA": [
+            {
+                "code": random_string(),
+                "is_error": False,
+                "description": random_string(),
+                "details": random_string(),
+                "time": random_string(),
+            }
+        ],
+    }
 
-    res = globus_transfer_submit_task(
-        source_collection_id=mock_config["COLLECTIONS"][0]["uuid"],
-        destination_collection_id=mock_config["COLLECTIONS"][1]["uuid"],
-        source_path="/foo-read-write-directory",
-        destination_path="/bar-read-write-directory",
-        label=label,
-        ctx=mock_ctx,
-    )
+    with patch("globus_mcp.services.transfer.tools.asyncio.sleep", new_callable=AsyncMock):
+        res = await globus_transfer_submit_task(
+            source_collection_id=mock_config["COLLECTIONS"][0]["uuid"],
+            destination_collection_id=mock_config["COLLECTIONS"][1]["uuid"],
+            DATA=[
+                {
+                    "source_path": "/foo-read-write-directory",
+                    "destination_path": "/bar-read-write-directory",
+                    "recursive": True,
+                },
+                {
+                    "source_path": "/foo-read-write-directory/nested",
+                    "destination_path": "/bar-read-write-directory/nested",
+                    "recursive": False,
+                },
+            ],
+            label=label,
+            timeout=1,
+            polling_interval=1,
+            limit=10,
+            offset=0,
+            ctx=mock_ctx,
+        )
 
     mock_handle_gare.assert_called_once_with(mock_client.submit_transfer, transfer_data)
+    assert mock_client.get_task.call_count == 2
+    mock_client.task_event_list.assert_called_once_with(task_id, limit=10, offset=0)
     assert res.task_id == task_id
+    assert res.completed is True
+    assert res.task["status"] == "SUCCEEDED"
+    assert len(res.events) == 1
 
 
-def test_globus_transfer_submit_task_api_error(
+@pytest.mark.asyncio
+async def test_globus_transfer_submit_task_api_error(
     mock_ctx: Mock, mock_handle_gare: Mock, mock_config: dict[str, Any]
 ):
     mock_handle_gare.side_effect = GlobusAPIError(r=MagicMock())
     with pytest.raises(ToolError, match="Failed to submit transfer"):
-        globus_transfer_submit_task(
+        await globus_transfer_submit_task(
             source_collection_id=mock_config["COLLECTIONS"][0]["uuid"],
             destination_collection_id=mock_config["COLLECTIONS"][1]["uuid"],
-            source_path="/foo-read-write-directory",
-            destination_path="/bar-read-write-directory",
+            DATA=[
+                {
+                    "source_path": "/foo-read-write-directory",
+                    "destination_path": "/bar-read-write-directory",
+                    "recursive": False,
+                }
+            ],
             label=random_string(),
             ctx=mock_ctx,
         )
 
 
-def test_globus_transfer_submit_task_rejects_disallowed_paths(
+@pytest.mark.asyncio
+async def test_globus_transfer_submit_task_rejects_disallowed_paths(
     mock_ctx: Mock, mock_config: dict[str, Any]
 ):
     with pytest.raises(ToolError, match="is not allowed"):
-        globus_transfer_submit_task(
+        await globus_transfer_submit_task(
             source_collection_id=mock_config["COLLECTIONS"][0]["uuid"],
             destination_collection_id=mock_config["COLLECTIONS"][1]["uuid"],
-            source_path="/not/allowed/source.h5",
-            destination_path="/bar-read-write-directory",
+            DATA=[
+                {
+                    "source_path": "/not/allowed/source.h5",
+                    "destination_path": "/bar-read-write-directory",
+                    "recursive": False,
+                }
+            ],
             label=random_string(),
             ctx=mock_ctx,
         )
@@ -346,6 +404,45 @@ def test_globus_transfer_get_task_events_api_error(mock_ctx: Mock, mock_client: 
     mock_client.task_event_list.side_effect = GlobusAPIError(r=MagicMock())
     with pytest.raises(ToolError, match="Failed to get task events"):
         globus_transfer_get_task_events(task_id=str(uuid.uuid4()), limit=10, offset=0, ctx=mock_ctx)
+
+
+@pytest.mark.asyncio
+async def test_globus_transfer_get_task_progress(mock_ctx: Mock, mock_client: Mock):
+    task_id = str(uuid.uuid4())
+
+    events_res: dict[str, Any] = {
+        "limit": 10,
+        "offset": 0,
+        "DATA": [
+            {
+                "code": random_string(),
+                "is_error": False,
+                "description": random_string(),
+                "details": random_string(),
+                "time": random_string(),
+            }
+        ],
+    }
+    mock_client.get_task.return_value = Mock(
+        data={"task_id": task_id, "status": "SUCCEEDED", "files_transferred": 1}
+    )
+    mock_client.task_event_list.return_value = events_res
+
+    res = await globus_transfer_get_task_progress(
+        task_id=task_id,
+        timeout=1,
+        polling_interval=1,
+        limit=10,
+        offset=0,
+        ctx=mock_ctx,
+    )
+
+    mock_client.get_task.assert_called_once_with(task_id)
+    mock_client.task_event_list.assert_called_once_with(task_id, limit=10, offset=0)
+    assert res.task_id == task_id
+    assert res.completed is True
+    assert res.task["status"] == "SUCCEEDED"
+    assert res.events[0].code == events_res["DATA"][0]["code"]
 
 
 def test_globus_transfer_list_directory(

@@ -1,4 +1,6 @@
+import asyncio
 import pathlib
+import time
 from collections.abc import Callable
 from http import HTTPStatus
 from typing import Annotated, Any, Literal
@@ -19,7 +21,7 @@ from globus_mcp.services.transfer.schemas import (
     TransferEventList,
     TransferFile,
     TransferFileList,
-    TransferSubmitResponse,
+    TransferTaskProgress,
 )
 
 
@@ -59,6 +61,68 @@ def _format_search_response(
         offset=res["offset"],
         has_next_page=res["has_next_page"],
         data=endpoints,
+    )
+
+
+def _format_task_events_response(res: globus_sdk.IterableTransferResponse) -> TransferEventList:
+    events = []
+    for ev in res["DATA"]:
+        event = TransferEvent(
+            code=ev["code"],
+            is_error=ev["is_error"],
+            description=ev["description"],
+            details=ev["details"],
+            time=ev["time"],
+        )
+        events.append(event)
+
+    return TransferEventList(limit=res["limit"], offset=res["offset"], data=events)
+
+
+async def _get_task_progress(
+    client: globus_sdk.TransferClient,
+    task_id: str,
+    timeout: int,
+    polling_interval: int,
+    limit: int,
+    offset: int,
+) -> TransferTaskProgress:
+    start_time = time.monotonic()
+    completed = False
+
+    try:
+        task_res = await asyncio.to_thread(client.get_task, task_id)
+        while True:
+            status = str(task_res.data.get("status", "")).upper()
+            if status in {"SUCCEEDED", "FAILED"}:
+                completed = True
+                break
+
+            elapsed = time.monotonic() - start_time
+            remaining = timeout - elapsed
+            if remaining <= 0:
+                break
+
+            await asyncio.sleep(min(float(polling_interval), remaining))
+            task_res = await asyncio.to_thread(client.get_task, task_id)
+
+        events_res = await asyncio.to_thread(
+            client.task_event_list,
+            task_id,
+            limit=limit,
+            offset=offset,
+        )
+    except globus_sdk.GlobusAPIError as e:
+        raise ToolError(f"Failed to get task progress: {e}") from e
+
+    task_data = dict(task_res.data)
+    events = _format_task_events_response(events_res).data
+
+    return TransferTaskProgress(
+        task_id=task_data.get("task_id", task_id),
+        completed=completed,
+        task=task_data,
+        events=events,
     )
 
 
@@ -196,46 +260,78 @@ def globus_transfer_search_endpoints_and_collections(
     return _format_search_response(res)
 
 
-def globus_transfer_submit_task(
+async def globus_transfer_submit_task(
     source_collection_id: Annotated[str, Field(description="ID of the source collection")],
     destination_collection_id: Annotated[
         str, Field(description="ID of the destination collection")
     ],
-    source_path: Annotated[
-        str, Field(description="Path to the source directory or file of the transfer")
-    ],
-    destination_path: Annotated[
-        str,
-        Field(description="Path to the destination directory or file of the transfer"),
+    DATA: Annotated[
+        list[dict[str, Any]],
+        Field(
+            description=(
+                "Transfer items to submit. Each item must include source_path, "
+                "destination_path, and recursive."
+            ),
+        ),
     ],
     label: Annotated[
         str,
         Field(default="Globus MCP Transfer", description="Label for the transfer task"),
     ],
     ctx: Context[ServerSession, GlobusContext],
-) -> TransferSubmitResponse:
+    timeout: Annotated[
+        int,
+        Field(default=600, ge=1, description="Maximum number of seconds to wait for completion."),
+    ] = 600,
+    polling_interval: Annotated[
+        int,
+        Field(default=10, ge=1, description="Seconds between status checks while waiting."),
+    ] = 10,
+    limit: Annotated[
+        int,
+        Field(default=10, le=1_000, description="Maximum number of events to return."),
+    ] = 10,
+    offset: Annotated[int, Field(default=0, description="Zero based offset into the result set.")] = 0,
+) -> TransferTaskProgress:
     """Submit a transfer task between two Globus Transfer collections.
 
-    Use globus_transfer_get_task_events to monitor the task's progress.
+    This tool waits for completion (or timeout) and returns current task status and events.
     """
     client = get_transfer_client(ctx)
-
-    _assert_collection_path_allowed(source_collection_id, source_path, "r")
-    _assert_collection_path_allowed(destination_collection_id, destination_path, "w")
 
     data = globus_sdk.TransferData(
         source_endpoint=source_collection_id,
         destination_endpoint=destination_collection_id,
         label=label,
     )
-    data.add_item(source_path=source_path, destination_path=destination_path)
+
+    for item in DATA:
+        source_path = str(item["source_path"])
+        destination_path = str(item["destination_path"])
+        recursive = bool(item["recursive"])
+
+        _assert_collection_path_allowed(source_collection_id, source_path, "r")
+        _assert_collection_path_allowed(destination_collection_id, destination_path, "w")
+
+        data.add_item(
+            source_path=source_path,
+            destination_path=destination_path,
+            recursive=recursive,
+        )
 
     try:
         res = _handle_gare(client.submit_transfer, data)
     except globus_sdk.GlobusAPIError as e:
         raise ToolError(f"Failed to submit transfer: {e}") from e
 
-    return TransferSubmitResponse(task_id=res.data["task_id"])
+    return await _get_task_progress(
+        client=client,
+        task_id=res.data["task_id"],
+        timeout=timeout,
+        polling_interval=polling_interval,
+        limit=limit,
+        offset=offset,
+    )
 
 
 def globus_transfer_get_task_events(
@@ -257,18 +353,39 @@ def globus_transfer_get_task_events(
     except globus_sdk.GlobusAPIError as e:
         raise ToolError(f"Failed to get task events: {e}") from e
 
-    events = []
-    for ev in res["DATA"]:
-        event = TransferEvent(
-            code=ev["code"],
-            is_error=ev["is_error"],
-            description=ev["description"],
-            details=ev["details"],
-            time=ev["time"],
-        )
-        events.append(event)
+    return _format_task_events_response(res)
 
-    return TransferEventList(limit=res["limit"], offset=res["offset"], data=events)
+
+async def globus_transfer_get_task_progress(
+    task_id: Annotated[str, Field(description="ID of the task")],
+    timeout: Annotated[
+        int,
+        Field(default=10, ge=1, description="Maximum number of seconds to wait for progress."),
+    ],
+    polling_interval: Annotated[
+        int,
+        Field(default=10, ge=1, description="Seconds between progress checks."),
+    ],
+    limit: Annotated[
+        int,
+        Field(default=10, le=1_000, description="Maximum number of events to return."),
+    ],
+    offset: Annotated[int, Field(default=0, description="Zero based offset into the result set.")],
+    ctx: Context[ServerSession, GlobusContext],
+) -> TransferTaskProgress:
+    """Wait for a transfer task to make progress, then return its status and recent events.
+
+    The tool returns once the task finishes or the timeout expires.
+    """
+    client = get_transfer_client(ctx)
+    return await _get_task_progress(
+        client=client,
+        task_id=task_id,
+        timeout=timeout,
+        polling_interval=polling_interval,
+        limit=limit,
+        offset=offset,
+    )
 
 
 def globus_transfer_list_directory(
@@ -313,5 +430,6 @@ ALL_TRANSFER_TOOLS: list[Callable[..., Any]] = [
     globus_transfer_list_endpoints_and_collections,
     globus_transfer_submit_task,
     globus_transfer_get_task_events,
+    globus_transfer_get_task_progress,
     globus_transfer_list_directory,
 ]

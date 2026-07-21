@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -25,6 +27,13 @@ class TransferEvent(BaseModel):
 
 class TransferSubmitResponse(BaseModel):
     task_id: str = Field(description="ID of the transfer task")
+
+
+class TransferTaskProgress(BaseModel):
+    task_id: str = Field(description="ID of the transfer task")
+    completed: bool = Field(description="true if the task finished before the timeout")
+    task: dict[str, Any] = Field(description="Raw task response data from Globus Transfer")
+    events: list[TransferEvent] = Field(description="Recent task events")
 
 
 class TransferFile(BaseModel):
