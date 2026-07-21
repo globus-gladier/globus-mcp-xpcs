@@ -291,7 +291,9 @@ async def globus_transfer_submit_task(
         int,
         Field(default=10, le=1_000, description="Maximum number of events to return."),
     ] = 10,
-    offset: Annotated[int, Field(default=0, description="Zero based offset into the result set.")] = 0,
+    offset: Annotated[
+        int, Field(default=0, description="Zero based offset into the result set.")
+    ] = 0,
 ) -> TransferTaskProgress:
     """Submit a transfer task between two Globus Transfer collections.
 
