@@ -206,8 +206,24 @@ def _get_boost_corr_metadata(
     import time
     from datetime import datetime
 
+    import numpy as np
     from xpcs_webplot import __version__ as webplot_version  # type: ignore[import-not-found]
     from xpcs_webplot.plot_images import XF  # type: ignore[import-not-found]
+
+    def numpy_to_python(obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        if isinstance(obj, dict):
+            return {k: numpy_to_python(v) for k, v in obj.items()}
+        if isinstance(obj, (list, tuple)):
+            return [numpy_to_python(v) for v in obj]
+        return obj
 
     metadata_fetch_start = time.time()
     # webplot_output = hdf2web_safe(
@@ -220,7 +236,7 @@ def _get_boost_corr_metadata(
     #     )
 
     xf = XF(corr_results)
-    metadata = xf.get_hdf_info()
+    metadata = {k: numpy_to_python(v) for k, v in xf.get_hdf_info().items()}
     metadata["analysis_type"] = xf.atype
     metadata["start_time"] = xf.start_time
     metadata["plot_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -274,12 +290,13 @@ def get_boost_corr_metadata(
     """Get metadata and plots from a boost_corr output HDF file."""
     try:
         client = get_compute_client(ctx)
-        with Executor(endpoint_id=compute_endpoint_id, client=client) as executor:
+        endpoint_config = config.get_endpoint(compute_endpoint_id)
+        with Executor(endpoint_id=compute_endpoint_id, client=client, user_endpoint_config=endpoint_config["config"]) as executor:
             future = executor.submit(  # type: ignore[no-untyped-call]
                 _get_boost_corr_metadata,
                 corr_results=corr_results,
             )
-            return cast(dict[str, Any], future.result())
+            return future.result()
     except Exception as e:
         raise ToolError(f"Failed to run boost_corr compute function: {e}") from e
 
@@ -381,6 +398,8 @@ def list_xpcs_collections() -> list[CollectionInfo]:
         )
         for col in config.COLLECTIONS
     ]
+
+
 
 
 def list_xpcs_compute_endpoints() -> list[ComputeEndpointInfo]:
