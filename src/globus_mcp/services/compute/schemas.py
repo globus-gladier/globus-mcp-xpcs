@@ -26,3 +26,10 @@ class ComputeTask(BaseModel):
         default=None,
         description="When the task status is 'failed', this will contain the exception traceback.",
     )
+
+
+class ComputeTaskBatchProgress(BaseModel):
+    total_tasks: int = Field(description="Total number of task IDs requested.")
+    completed_tasks: int = Field(description="Number of tasks that have completed.")
+    pending_tasks: int = Field(description="Number of tasks still pending completion.")
+    tasks: list[ComputeTask] = Field(description="Status and result details for each task.")

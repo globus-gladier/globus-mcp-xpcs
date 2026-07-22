@@ -2,7 +2,7 @@ import random
 import sys
 import uuid
 from typing import Any
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 from globus_compute_sdk import Client
@@ -256,42 +256,74 @@ def test_globus_compute_submit_task_api_error(mock_ctx: Mock, mock_client: Mock)
 
 
 @pytest.mark.parametrize("result", [random_string(), None])
-def test_globus_compute_get_task_status(result: str | None, mock_ctx: Mock, mock_client: Mock):
-    res_data = {
-        "task_id": str(uuid.uuid4()),
-        "status": random_string(),
-        "result": result,
-        "exception": None if result else random_string(),
+@pytest.mark.asyncio
+async def test_globus_compute_get_task_status(result: str | None, mock_ctx: Mock, mock_client: Mock):
+    task_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
+    first_task_first_poll = {
+        "task_id": task_ids[0],
+        "status": "pending",
+        "result": None,
+        "exception": None,
     }
-    mock_client._compute_web_client.v2.get_task.return_value = res_data
+    first_task_second_poll = {
+        "task_id": task_ids[0],
+        "status": "success",
+        "result": result,
+        "exception": None,
+    }
+    second_task_first_poll = {
+        "task_id": task_ids[1],
+        "status": "success",
+        "result": result,
+        "exception": None,
+    }
+
+    mock_client._compute_web_client.v2.get_task.side_effect = [
+        first_task_first_poll,
+        second_task_first_poll,
+        first_task_second_poll,
+        second_task_first_poll,
+    ]
     mock_client.fx_serializer.deserialize.return_value = result
 
-    res = globus_compute_get_task_status(task_id=res_data["task_id"], ctx=mock_ctx)
+    with patch("globus_mcp.services.compute.tools.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        res = await globus_compute_get_task_status(
+            task_ids=task_ids,
+            polling_interval=0.01,
+            timeout_seconds=1,
+            ctx=mock_ctx,
+        )
 
-    mock_client._compute_web_client.v2.get_task.assert_called_once_with(res_data["task_id"])
-    if result:
-        mock_client.fx_serializer.deserialize.assert_called_once_with(result)
+    assert mock_client._compute_web_client.v2.get_task.call_count == 4
+    assert mock_sleep.call_count == 1
+    if result is not None:
+        assert mock_client.fx_serializer.deserialize.call_count == 2
+        mock_client.fx_serializer.deserialize.assert_any_call(result)
     else:
         mock_client.fx_serializer.deserialize.assert_not_called()
-    assert res.task_id == res_data["task_id"]
-    assert res.status == res_data["status"]
-    assert res.result == result
-    assert res.exception == res_data["exception"]
+
+    assert res.total_tasks == 2
+    assert res.completed_tasks == 2
+    assert res.pending_tasks == 0
+    assert [task.task_id for task in res.tasks] == task_ids
 
 
-def test_globus_compute_get_task_status_api_error(mock_ctx: Mock, mock_client: Mock):
+@pytest.mark.asyncio
+async def test_globus_compute_get_task_status_api_error(mock_ctx: Mock, mock_client: Mock):
     mock_client._compute_web_client.v2.get_task.side_effect = GlobusAPIError(r=MagicMock())
     with pytest.raises(ToolError, match="Failed to get task status"):
-        globus_compute_get_task_status(task_id=str(uuid.uuid4()), ctx=mock_ctx)
+        await globus_compute_get_task_status(task_ids=[str(uuid.uuid4())], ctx=mock_ctx)
 
 
-def test_globus_compute_get_task_status_deserialization_error(mock_ctx: Mock, mock_client: Mock):
+@pytest.mark.asyncio
+async def test_globus_compute_get_task_status_deserialization_error(mock_ctx: Mock, mock_client: Mock):
     res_data = {
         "task_id": str(uuid.uuid4()),
         "status": random_string(),
         "result": random_string(),
+        "exception": None,
     }
     mock_client._compute_web_client.v2.get_task.return_value = res_data
     mock_client.fx_serializer.deserialize.side_effect = Exception
     with pytest.raises(ToolError, match="Unable to deserialize result"):
-        globus_compute_get_task_status(task_id=res_data["task_id"], ctx=mock_ctx)
+        await globus_compute_get_task_status(task_ids=[res_data["task_id"]], ctx=mock_ctx)
