@@ -1,3 +1,4 @@
+import time
 from collections.abc import Callable
 from typing import Annotated, Any, cast
 
@@ -15,8 +16,25 @@ from globus_mcp.services.xpcs.schemas import (
     CollectionInfo,
     ComputeEndpointBasepath,
     ComputeEndpointInfo,
-    XPCSBoostCorrResult,
+    XPCSBoostCorrSubmitResponse,
 )
+
+
+def _wait_for_task_ids(
+    futures: list[Any],
+    timeout_seconds: float = 10.0,
+    polling_interval_seconds: float = 1.0,
+) -> list[str]:
+    deadline = time.monotonic() + timeout_seconds
+    while True:
+        task_ids = [future.task_id for future in futures]
+        if all(task_id is not None for task_id in task_ids):
+            return [cast(str, task_id) for task_id in task_ids]
+
+        if time.monotonic() >= deadline:
+            raise ToolError("Timed out waiting for Globus Compute task IDs")
+
+        time.sleep(polling_interval_seconds)
 
 
 def _compute_run_boost_corr_executable(
@@ -104,8 +122,8 @@ def _compute_run_boost_corr_executable(
 
 def run_xpcs_boost_corr(
     raw: Annotated[
-        str,
-        Field(description="Path to the raw detector input file for boost corr"),
+        list[str],
+        Field(min_length=1, description="Paths to the raw detector input files for boost corr"),
     ],
     qmap: Annotated[
         str,
@@ -130,8 +148,11 @@ def run_xpcs_boost_corr(
         str,
         Field(description="Compute endpoint ID where boost_corr should run"),
     ] = config.DEFAULT_COMPUTE_ENDPOINT,
-) -> XPCSBoostCorrResult:
-    """Run Boost Corr on the raw dataset with the given qmap parateter file.
+) -> XPCSBoostCorrSubmitResponse:
+    """Run Boost Corr on one or more raw datasets with the given qmap parateter file.
+
+    Each raw file is submitted as an individual compute job. The executor batches the
+    submissions internally, and this tool returns the UUID for each submitted task.
 
     Make sure source data is on the compute endpoint filesystem before running boost_corr.
     The boost_corr executable will not transfer data for you.
@@ -191,14 +212,17 @@ def run_xpcs_boost_corr(
             client=client,
             user_endpoint_config=endpoint_config["config"],
         ) as executor:
-            future = executor.submit(  # type: ignore[no-untyped-call]
-                _compute_run_boost_corr_executable,
-                raw=raw,
-                qmap=qmap,
-                extra_boost_corr_params=extra_boost_corr_params,
-                flow_debug=flow_debug,
-            )
-            return XPCSBoostCorrResult.model_validate(future.result())
+            futures = [
+                executor.submit(  # type: ignore[no-untyped-call]
+                    _compute_run_boost_corr_executable,
+                    raw=raw_file,
+                    qmap=qmap,
+                    extra_boost_corr_params=extra_boost_corr_params,
+                    flow_debug=flow_debug,
+                )
+                for raw_file in raw
+            ]
+            return XPCSBoostCorrSubmitResponse(task_uuids=_wait_for_task_ids(futures))
     except Exception as e:
         raise ToolError(f"Failed to run boost_corr compute function: {e}") from e
 
