@@ -17,8 +17,8 @@ from globus_mcp.services.compute.schemas import (
     ComputeEndpoint,
     ComputeFunctionRegisterResponse,
     ComputeSubmitResponse,
-    ComputeTaskBatchProgress,
     ComputeTask,
+    ComputeTaskBatchProgress,
 )
 
 

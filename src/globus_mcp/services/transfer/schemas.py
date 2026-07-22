@@ -60,4 +60,3 @@ class TransferEndpointList(TransferList):
 
 class TransferEventList(TransferList):
     data: list[TransferEvent] = Field(description="Set of transfer task events")
-

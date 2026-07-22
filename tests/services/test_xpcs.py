@@ -19,10 +19,14 @@ def test_run_xpcs_boost_corr_submits_one_job_per_raw_file(mock_ctx: Mock):
         Mock(task_id="task-2"),
     ]
 
-    with patch("globus_mcp.services.xpcs.tools.get_compute_client", return_value=mock_client), patch(
-        "globus_mcp.services.xpcs.tools.config.get_endpoint",
-        return_value={"config": {"queue": "debug"}},
-    ), patch("globus_mcp.services.xpcs.tools.Executor", return_value=mock_executor):
+    with (
+        patch("globus_mcp.services.xpcs.tools.get_compute_client", return_value=mock_client),
+        patch(
+            "globus_mcp.services.xpcs.tools.config.get_endpoint",
+            return_value={"config": {"queue": "debug"}},
+        ),
+        patch("globus_mcp.services.xpcs.tools.Executor", return_value=mock_executor),
+    ):
         res = run_xpcs_boost_corr(
             raw=["/path/to/raw-1.h5", "/path/to/raw-2.h5"],
             qmap="/path/to/qmap.hdf",

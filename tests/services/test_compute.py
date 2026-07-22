@@ -257,7 +257,9 @@ def test_globus_compute_submit_task_api_error(mock_ctx: Mock, mock_client: Mock)
 
 @pytest.mark.parametrize("result", [random_string(), None])
 @pytest.mark.asyncio
-async def test_globus_compute_get_task_status(result: str | None, mock_ctx: Mock, mock_client: Mock):
+async def test_globus_compute_get_task_status(
+    result: str | None, mock_ctx: Mock, mock_client: Mock
+):
     task_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
     first_task_first_poll = {
         "task_id": task_ids[0],
@@ -286,7 +288,10 @@ async def test_globus_compute_get_task_status(result: str | None, mock_ctx: Mock
     ]
     mock_client.fx_serializer.deserialize.return_value = result
 
-    with patch("globus_mcp.services.compute.tools.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+    with patch(
+        "globus_mcp.services.compute.tools.asyncio.sleep",
+        new_callable=AsyncMock,
+    ) as mock_sleep:
         res = await globus_compute_get_task_status(
             task_ids=task_ids,
             polling_interval=0.01,
@@ -316,7 +321,9 @@ async def test_globus_compute_get_task_status_api_error(mock_ctx: Mock, mock_cli
 
 
 @pytest.mark.asyncio
-async def test_globus_compute_get_task_status_deserialization_error(mock_ctx: Mock, mock_client: Mock):
+async def test_globus_compute_get_task_status_deserialization_error(
+    mock_ctx: Mock, mock_client: Mock
+):
     res_data = {
         "task_id": str(uuid.uuid4()),
         "status": random_string(),

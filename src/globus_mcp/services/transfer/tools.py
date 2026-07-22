@@ -1,9 +1,9 @@
 import asyncio
-from functools import lru_cache
 import pathlib
 import re
 import time
 from collections.abc import Callable
+from functools import lru_cache
 from http import HTTPStatus
 from typing import Annotated, Any, Literal
 
@@ -17,9 +17,9 @@ from globus_mcp import config
 from globus_mcp.context import GlobusContext
 from globus_mcp.services.transfer.client import get_transfer_client
 from globus_mcp.services.transfer.schemas import (
+    TransferDirectoryListing,
     TransferEndpoint,
     TransferEndpointList,
-    TransferDirectoryListing,
     TransferEvent,
     TransferEventList,
     TransferTaskProgress,
@@ -422,7 +422,10 @@ def globus_transfer_list_directory(
         int,
         Field(default=100, le=100_000, description="Maximum number of results to return."),
     ] = 100,
-    offset: Annotated[int, Field(default=0, description="Zero based offset into the result set.")] = 0,
+    offset: Annotated[
+        int,
+        Field(default=0, description="Zero based offset into the result set."),
+    ] = 0,
 ) -> TransferDirectoryListing:
     """List contents of a directory on a Globus Transfer collection"""
     client = get_transfer_client(ctx)
