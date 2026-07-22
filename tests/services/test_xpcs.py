@@ -79,3 +79,23 @@ def test_wait_for_task_ids_timeout():
 
     with pytest.raises(ToolError, match="Timed out waiting for Globus Compute task IDs"):
         _wait_for_task_ids([future], timeout_seconds=0.01, polling_interval_seconds=0.001)
+
+
+def test_compute_run_boost_corr_executable_returns_output_file(tmp_path):
+    raw_file = tmp_path / "sample.h5"
+    raw_file.write_text("raw")
+    result_file = tmp_path / "sample_results.hdf"
+    result_file.write_text("result")
+
+    output_dir = tmp_path / "boost_output"
+    completed = Mock(returncode=0, stdout="ok", stderr="")
+
+    with patch("subprocess.run", return_value=completed):
+        result = _compute_run_boost_corr_executable(
+            raw=str(raw_file),
+            qmap="/path/to/qmap.hdf",
+            extra_boost_corr_params={"output": str(output_dir)},
+            flow_debug=False,
+        )
+
+    assert result["output_file"] == str(result_file)

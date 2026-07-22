@@ -53,9 +53,6 @@ def _compute_run_boost_corr_executable(
     boost_corr["raw"] = raw
     boost_corr["qmap"] = qmap
 
-    if "output" not in boost_corr:
-        boost_corr["output"] = str(pathlib.Path(raw).parent / "boost_corr_output_claude_test")
-
     output_dir = pathlib.Path(boost_corr["output"])
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -109,10 +106,19 @@ def _compute_run_boost_corr_executable(
         )
     )
 
+    raw_path = pathlib.Path(raw)
+    result_stem = f"{raw_path.stem}_results"
+    output_file = None
+    for candidate in raw_path.parent.iterdir():
+        if candidate.is_file() and candidate.stem == result_stem:
+            output_file = str(candidate)
+            break
+
     result = {
         "result": "SUCCEEDED" if completed.returncode == 0 else "FAILED",
         "returncode": completed.returncode,
         "execution_time_seconds": execution_time_seconds,
+        "output_file": output_file,
     }
     if flow_debug:
         result["stdout"] = completed.stdout[-1000:]
