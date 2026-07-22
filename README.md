@@ -8,7 +8,7 @@ with [Globus](https://www.globus.org/) services.
 ### XPCS
 
 - `run_xpcs_boost_corr` - Submit a compute function that executes the `boost_corr` executable
-  using `raw` and `qmap` inputs
+  using a list of `raw` files and a shared `qmap` input; returns task UUIDs for each job
 - `get_boost_corr_metadata` - Generate metadata from a `boost_corr` output HDF file
 - `get_generic_metadata` - Read all HDF5 attributes from an output file in a JSON-serializable format
 - `list_xpcs_collections` - List configured XPCS collections and allowed basepaths/permissions

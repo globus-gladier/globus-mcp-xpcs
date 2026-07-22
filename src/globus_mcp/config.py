@@ -42,6 +42,10 @@ COLLECTIONS: list[dict[str, Any]] = [
                 "path": "/8IDI/2025-2/tempus202507-merge/data/",
                 "permissions": "r",
             },
+            {
+                "path": "/8IDI/2026-2/tingxu202606/data",
+                "permissions": "r",
+            },
         ],
     },
     {
