@@ -17,6 +17,7 @@ from globus_mcp.services.transfer.tools import (
     ALL_TRANSFER_TOOLS,
     _format_search_response,
     _handle_gare,
+    _list_directory_entries_cached,
     globus_transfer_get_task_events,
     globus_transfer_get_task_progress,
     globus_transfer_list_directory,
@@ -474,6 +475,7 @@ def test_globus_transfer_list_directory(
     res = globus_transfer_list_directory(
         collection_id=collection_id,
         path=path,
+        filename_regex=None,
         limit=res_data["limit"],
         offset=res_data["offset"],
         ctx=mock_ctx,
@@ -482,29 +484,76 @@ def test_globus_transfer_list_directory(
     mock_client.operation_ls.assert_called_once_with(
         collection_id, path=path, limit=res_data["limit"], offset=res_data["offset"]
     )
-    assert res.limit == res_data["limit"]
-    assert res.offset == res_data["offset"]
-    for idx, file in enumerate(res.data):
-        file_data = res_data["DATA"][idx]
-        assert file.name == file_data["name"]
-        assert file.type == file_data["type"]
-        assert file.link_target == file_data["link_target"]
-        assert file.user == file_data["user"]
-        assert file.group == file_data["group"]
-        assert file.permissions == file_data["permissions"]
-        assert file.size == file_data["size"]
-        assert file.last_modified == file_data["last_modified"]
+    assert res.basepath == path
+    assert res.filenames == [file_data["name"] for file_data in res_data["DATA"]]
+
+
+def test_globus_transfer_list_directory_filters_and_caches(
+    mock_ctx: Mock, mock_client: Mock, mock_config: dict[str, Any]
+):
+    collection_id = mock_config["COLLECTIONS"][0]["uuid"]
+    path = "/foo-read-write-directory"
+    _list_directory_entries_cached.cache_clear()
+    mock_client.operation_ls.return_value = {
+        "DATA": [
+            {"name": "match_1.txt"},
+            {"name": "skip.dat"},
+            {"name": "match_2.txt"},
+        ]
+    }
+
+    first = globus_transfer_list_directory(
+        collection_id=collection_id,
+        path=path,
+        filename_regex=r"^match_.*\.txt$",
+        limit=100,
+        offset=0,
+        ctx=mock_ctx,
+    )
+    second = globus_transfer_list_directory(
+        collection_id=collection_id,
+        path=path,
+        filename_regex=r"^skip",
+        limit=100,
+        offset=0,
+        ctx=mock_ctx,
+    )
+
+    mock_client.operation_ls.assert_called_once_with(collection_id, path=path, limit=100, offset=0)
+    assert first.filenames == ["match_1.txt", "match_2.txt"]
+    assert second.filenames == ["skip.dat"]
+    assert first.basepath == path
+    assert second.basepath == path
 
 
 def test_globus_transfer_list_directory_api_error(
     mock_ctx: Mock, mock_client: Mock, mock_config: dict[str, Any]
 ):
+    _list_directory_entries_cached.cache_clear()
     mock_client.operation_ls.side_effect = GlobusAPIError(r=MagicMock())
     with pytest.raises(ToolError, match="Failed to list directory contents"):
         globus_transfer_list_directory(
             collection_id=mock_config["COLLECTIONS"][0]["uuid"],
             path="/foo-read-write-directory",
+            filename_regex=None,
             limit=100,
             offset=0,
             ctx=mock_ctx,
         )
+
+
+def test_globus_transfer_list_directory_invalid_regex(
+    mock_ctx: Mock, mock_client: Mock, mock_config: dict[str, Any]
+):
+    _list_directory_entries_cached.cache_clear()
+    with pytest.raises(ToolError, match="Invalid filename regex"):
+        globus_transfer_list_directory(
+            collection_id=mock_config["COLLECTIONS"][0]["uuid"],
+            path="/foo-read-write-directory",
+            filename_regex="[",
+            limit=100,
+            offset=0,
+            ctx=mock_ctx,
+        )
+
+    mock_client.operation_ls.assert_not_called()

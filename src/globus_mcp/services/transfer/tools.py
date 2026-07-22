@@ -1,5 +1,7 @@
 import asyncio
+from functools import lru_cache
 import pathlib
+import re
 import time
 from collections.abc import Callable
 from http import HTTPStatus
@@ -17,10 +19,9 @@ from globus_mcp.services.transfer.client import get_transfer_client
 from globus_mcp.services.transfer.schemas import (
     TransferEndpoint,
     TransferEndpointList,
+    TransferDirectoryListing,
     TransferEvent,
     TransferEventList,
-    TransferFile,
-    TransferFileList,
     TransferTaskProgress,
 )
 
@@ -131,6 +132,22 @@ def _normalize_posix_path(path: str) -> str:
     if not normalized.startswith("/"):
         normalized = f"/{normalized}"
     return normalized.rstrip("/") or "/"
+
+
+@lru_cache(maxsize=256)
+def _list_directory_entries_cached(
+    client: globus_sdk.TransferClient,
+    collection_id: str,
+    normalized_path: str,
+    limit: int,
+    offset: int,
+) -> list[dict[str, Any]]:
+    try:
+        res = client.operation_ls(collection_id, path=normalized_path, limit=limit, offset=offset)
+    except globus_sdk.GlobusAPIError as e:
+        raise ToolError(f"Failed to list directory contents: {e}") from e
+
+    return [dict(item) for item in res["DATA"]]
 
 
 def _resolve_allowed_basepath(collection: dict[str, Any], allowed_basepath: str) -> str:
@@ -393,38 +410,43 @@ async def globus_transfer_get_task_progress(
 def globus_transfer_list_directory(
     collection_id: Annotated[str, Field(description="ID of the collection")],
     path: Annotated[str, Field(description="Path to a directory")],
+    ctx: Context[ServerSession, GlobusContext],
+    filename_regex: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Optional regex filter applied to returned file and directory names.",
+        ),
+    ] = None,
     limit: Annotated[
         int,
         Field(default=100, le=100_000, description="Maximum number of results to return."),
-    ],
-    offset: Annotated[int, Field(default=0, description="Zero based offset into the result set.")],
-    ctx: Context[ServerSession, GlobusContext],
-) -> TransferFileList:
+    ] = 100,
+    offset: Annotated[int, Field(default=0, description="Zero based offset into the result set.")] = 0,
+) -> TransferDirectoryListing:
     """List contents of a directory on a Globus Transfer collection"""
     client = get_transfer_client(ctx)
+    normalized_path = _normalize_posix_path(path)
 
-    _assert_collection_path_allowed(collection_id, path, "r")
+    _assert_collection_path_allowed(collection_id, normalized_path, "r")
 
     try:
-        res = client.operation_ls(collection_id, path=path, limit=limit, offset=offset)
-    except globus_sdk.GlobusAPIError as e:
-        raise ToolError(f"Failed to list directory contents: {e}") from e
+        pattern = re.compile(filename_regex) if filename_regex is not None else None
+    except re.error as e:
+        raise ToolError(f"Invalid filename regex '{filename_regex}': {e}") from e
 
-    files = []
-    for f in res["DATA"]:
-        file = TransferFile(
-            name=f["name"],
-            type=f["type"],
-            link_target=f.get("link_target"),
-            user=f.get("user"),
-            group=f.get("group"),
-            permissions=f["permissions"],
-            size=f["size"],
-            last_modified=f["last_modified"],
-        )
-        files.append(file)
+    entries = _list_directory_entries_cached(
+        client,
+        collection_id,
+        normalized_path,
+        limit,
+        offset,
+    )
+    filenames = [str(entry["name"]) for entry in entries]
+    if pattern is not None:
+        filenames = [name for name in filenames if pattern.search(name)]
 
-    return TransferFileList(limit=limit, offset=offset, data=files)
+    return TransferDirectoryListing(filenames=filenames, basepath=normalized_path)
 
 
 ALL_TRANSFER_TOOLS: list[Callable[..., Any]] = [
