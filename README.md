@@ -8,7 +8,8 @@ with [Globus](https://www.globus.org/) services.
 ### XPCS
 
 - `run_xpcs_boost_corr` - Submit a compute function that executes the `boost_corr` executable
-  using a list of `raw` files and a shared `qmap` input; returns task UUIDs for each job
+  using a list of `raw` files and a shared `qmap` input; returns task UUIDs for each job.
+  Poll them with `globus_compute_get_task_status`.
 - `get_boost_corr_metadata` - Generate metadata from a `boost_corr` output HDF file
 - `get_generic_metadata` - Read all HDF5 attributes from an output file in a JSON-serializable format
 - `list_xpcs_collections` - List configured XPCS collections and allowed basepaths/permissions
@@ -21,9 +22,12 @@ with [Globus](https://www.globus.org/) services.
 - `globus_transfer_submit_task` - Submit a transfer task, await completion/timeout, and return status plus recent events
 - `globus_transfer_get_task_events` - Get task events for transfer progress and troubleshooting
 - `globus_transfer_get_task_progress` - Wait for transfer progress and return task status plus recent events
-- `globus_transfer_list_directory` - List directory contents on a collection
+- `globus_transfer_list_directory` - List directory contents on a collection; `filename_regex`
+  filtering applies before `limit` and `offset` pagination
 
 Notes:
+- `globus_transfer_list_directory` applies `filename_regex` before pagination, so narrow queries can
+  still return matches without raising `limit`.
 This README intentionally documents only XPCS and Transfer tools. Compute service tools are omitted.
 
 ## Configuration

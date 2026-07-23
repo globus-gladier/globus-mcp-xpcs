@@ -482,10 +482,18 @@ def test_globus_transfer_list_directory(
     )
 
     mock_client.operation_ls.assert_called_once_with(
-        collection_id, path=path, limit=res_data["limit"], offset=res_data["offset"]
+        collection_id,
+        path=path,
+        limit=100_000,
+        offset=0,
     )
     assert res.basepath == path
-    assert res.filenames == [file_data["name"] for file_data in res_data["DATA"]]
+    assert res.filenames == [
+        file_data["name"]
+        for file_data in res_data["DATA"][
+            res_data["offset"] : res_data["offset"] + res_data["limit"]
+        ]
+    ]
 
 
 def test_globus_transfer_list_directory_filters_and_caches(
@@ -496,8 +504,8 @@ def test_globus_transfer_list_directory_filters_and_caches(
     _list_directory_entries_cached.cache_clear()
     mock_client.operation_ls.return_value = {
         "DATA": [
-            {"name": "match_1.txt"},
             {"name": "skip.dat"},
+            {"name": "match_1.txt"},
             {"name": "match_2.txt"},
         ]
     }
@@ -506,7 +514,7 @@ def test_globus_transfer_list_directory_filters_and_caches(
         collection_id=collection_id,
         path=path,
         filename_regex=r"^match_.*\.txt$",
-        limit=100,
+        limit=1,
         offset=0,
         ctx=mock_ctx,
     )
@@ -514,16 +522,31 @@ def test_globus_transfer_list_directory_filters_and_caches(
         collection_id=collection_id,
         path=path,
         filename_regex=r"^skip",
-        limit=100,
+        limit=1,
         offset=0,
         ctx=mock_ctx,
     )
+    third = globus_transfer_list_directory(
+        collection_id=collection_id,
+        path=path,
+        filename_regex=r"^match_.*\.txt$",
+        limit=1,
+        offset=1,
+        ctx=mock_ctx,
+    )
 
-    mock_client.operation_ls.assert_called_once_with(collection_id, path=path, limit=100, offset=0)
-    assert first.filenames == ["match_1.txt", "match_2.txt"]
+    mock_client.operation_ls.assert_called_once_with(
+        collection_id,
+        path=path,
+        limit=100_000,
+        offset=0,
+    )
+    assert first.filenames == ["match_1.txt"]
     assert second.filenames == ["skip.dat"]
+    assert third.filenames == ["match_2.txt"]
     assert first.basepath == path
     assert second.basepath == path
+    assert third.basepath == path
 
 
 def test_globus_transfer_list_directory_api_error(

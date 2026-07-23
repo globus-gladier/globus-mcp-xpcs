@@ -225,7 +225,8 @@ async def globus_compute_get_task_status(
 ) -> ComputeTaskBatchProgress:
     """Retrieve status and results for multiple Globus Compute tasks.
 
-    This tool polls until all tasks complete or the timeout is reached.
+    Use this to poll the task_uuids returned by run_xpcs_boost_corr. This tool polls until all
+    tasks complete or the timeout is reached.
     """
     client = get_compute_client(ctx)
     task_data_by_id: dict[str, dict[str, Any]] = {}

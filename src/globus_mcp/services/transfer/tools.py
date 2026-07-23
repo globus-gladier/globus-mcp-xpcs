@@ -25,6 +25,8 @@ from globus_mcp.services.transfer.schemas import (
     TransferTaskProgress,
 )
 
+_TRANSFER_LS_PAGE_SIZE = 100_000
+
 
 def _handle_gare(
     client_method: Callable[..., globus_sdk.GlobusHTTPResponse],
@@ -139,15 +141,26 @@ def _list_directory_entries_cached(
     client: globus_sdk.TransferClient,
     collection_id: str,
     normalized_path: str,
-    limit: int,
-    offset: int,
 ) -> list[dict[str, Any]]:
-    try:
-        res = client.operation_ls(collection_id, path=normalized_path, limit=limit, offset=offset)
-    except globus_sdk.GlobusAPIError as e:
-        raise ToolError(f"Failed to list directory contents: {e}") from e
+    entries: list[dict[str, Any]] = []
+    offset = 0
+    while True:
+        try:
+            res = client.operation_ls(
+                collection_id,
+                path=normalized_path,
+                limit=_TRANSFER_LS_PAGE_SIZE,
+                offset=offset,
+            )
+        except globus_sdk.GlobusAPIError as e:
+            raise ToolError(f"Failed to list directory contents: {e}") from e
 
-    return [dict(item) for item in res["DATA"]]
+        page_entries = [dict(item) for item in res["DATA"]]
+        entries.extend(page_entries)
+        if len(page_entries) < _TRANSFER_LS_PAGE_SIZE:
+            return entries
+
+        offset += _TRANSFER_LS_PAGE_SIZE
 
 
 def _resolve_allowed_basepath(collection: dict[str, Any], allowed_basepath: str) -> str:
@@ -415,7 +428,10 @@ def globus_transfer_list_directory(
         str | None,
         Field(
             default=None,
-            description="Optional regex filter applied to returned file and directory names.",
+            description=(
+                "Optional regex filter applied to the full directory listing before limit/offset "
+                "pagination is applied."
+            ),
         ),
     ] = None,
     limit: Annotated[
@@ -427,7 +443,10 @@ def globus_transfer_list_directory(
         Field(default=0, description="Zero based offset into the result set."),
     ] = 0,
 ) -> TransferDirectoryListing:
-    """List contents of a directory on a Globus Transfer collection"""
+    """List contents of a directory on a Globus Transfer collection.
+
+    If filename_regex is provided, filtering is applied before limit and offset pagination.
+    """
     client = get_transfer_client(ctx)
     normalized_path = _normalize_posix_path(path)
 
@@ -438,16 +457,12 @@ def globus_transfer_list_directory(
     except re.error as e:
         raise ToolError(f"Invalid filename regex '{filename_regex}': {e}") from e
 
-    entries = _list_directory_entries_cached(
-        client,
-        collection_id,
-        normalized_path,
-        limit,
-        offset,
-    )
+    entries = _list_directory_entries_cached(client, collection_id, normalized_path)
     filenames = [str(entry["name"]) for entry in entries]
     if pattern is not None:
         filenames = [name for name in filenames if pattern.search(name)]
+
+    filenames = filenames[offset : offset + limit]
 
     return TransferDirectoryListing(filenames=filenames, basepath=normalized_path)
 

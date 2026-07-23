@@ -109,7 +109,7 @@ def _compute_run_boost_corr_executable(
     raw_path = pathlib.Path(raw)
     result_stem = f"{raw_path.stem}_results"
     output_file = None
-    for candidate in raw_path.parent.iterdir():
+    for candidate in sorted(output_dir.iterdir()):
         if candidate.is_file() and candidate.stem == result_stem:
             output_file = str(candidate)
             break
@@ -158,7 +158,9 @@ def run_xpcs_boost_corr(
     """Run Boost Corr on one or more raw datasets with the given qmap parateter file.
 
     Each raw file is submitted as an individual compute job. The executor batches the
-    submissions internally, and this tool returns the UUID for each submitted task.
+    submissions internally, and this tool returns the UUID for each submitted task. Poll the
+    returned task_uuids with globus_compute_get_task_status to monitor progress and retrieve the
+    completed task results, including output_file.
 
     Make sure source data is on the compute endpoint filesystem before running boost_corr.
     The boost_corr executable will not transfer data for you.
@@ -171,11 +173,14 @@ def run_xpcs_boost_corr(
         1. eiger4m/lambda2m/rigaku(slow mode) .h5
         2. lambda750k, legacy .imm file. we no longer use it at the beamline.
         3. rigaku500k (fast mode), one .bin file
-        4. rigaku3m (fast mode), .bin.xxx file, xxx in [001, ... 006] Always choose the first 001
-           file as raw
-
-    Boost corr automatically creates an output file in the same directory as the raw input file,
-    named the same as the raw input with "_results" appended to the filename. For example:
+        4. rigaku3m (fast mode), .bin.xxx file, like .bin.001, .bin.002, etc. Always choose the
+            first .bin.000 file as raw input. The boost_corr executable will automatically detect the rest of the .bin.xxx files in the same directory.
+    
+    Boost corr writes its outputs into the directory named by extra_boost_corr_params["output"].
+    If output is not set, this tool defaults to a sibling directory named
+    boost_corr_output_claude_test under the raw file's parent directory. The completed task result
+    reports output_file when it finds a file in that output directory whose stem matches the raw
+    filename plus "_results". For example:
 
     Cb0058_D100_a0011_f2000000_r00001_t76ns.hdf
 
