@@ -3,6 +3,21 @@
 The Globus [MCP](https://modelcontextprotocol.io) Server enables LLM applications to interact
 with [Globus](https://www.globus.org/) services.
 
+
+## Recommended prompts
+
+These are example prompts that can be used with this mcp server.
+
+#### Prompt 1:
+
+Run Multitau analysis for cycle 2026-2, tingxu202606, prefix Ib1202, with suffix ranging from 1 to 42, using rigaku3m_qmap_S270_D27_lin.hdf as the qmap.
+
+#### Prompt 2:
+
+Run Twotime analysis for cycle 2026-2, foster202606, prefix from F1173 to F1179, using designated qmaps for each measurement.
+
+
+
 ## Supported Tools
 
 ### XPCS
