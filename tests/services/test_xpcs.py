@@ -81,6 +81,29 @@ def test_wait_for_task_ids_timeout():
         _wait_for_task_ids([future], timeout_seconds=0.01, polling_interval_seconds=0.001)
 
 
+def test_wait_for_task_ids_timeout_returns_available_ids():
+    class DelayedFuture:
+        def __init__(self, values: list[str | None]):
+            self._values = values
+            self._index = 0
+
+        @property
+        def task_id(self) -> str | None:
+            value = self._values[min(self._index, len(self._values) - 1)]
+            self._index += 1
+            return value
+
+    futures = [
+        DelayedFuture([None, "task-1"]),
+        DelayedFuture([None, None, None]),
+    ]
+
+    with patch("globus_mcp.services.xpcs.tools.time.sleep", return_value=None):
+        task_ids = _wait_for_task_ids(futures, timeout_seconds=0.001, polling_interval_seconds=0.0)
+
+    assert task_ids == ["task-1"]
+
+
 def test_compute_run_boost_corr_executable_returns_output_file(tmp_path):
     raw_file = tmp_path / "sample.h5"
     raw_file.write_text("raw")
@@ -105,8 +128,7 @@ def test_compute_run_boost_corr_executable_returns_output_file(tmp_path):
 def test_compute_run_boost_corr_executable_uses_default_output_directory(tmp_path):
     raw_file = tmp_path / "sample.h5"
     raw_file.write_text("raw")
-    output_dir = tmp_path / "boost_corr_output_claude_test"
-    output_dir.mkdir()
+    output_dir = tmp_path
     result_file = output_dir / "sample_results.hdf"
     result_file.write_text("result")
 

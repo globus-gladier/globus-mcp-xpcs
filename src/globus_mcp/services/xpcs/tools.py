@@ -26,12 +26,26 @@ def _wait_for_task_ids(
     polling_interval_seconds: float = 1.0,
 ) -> list[str]:
     deadline = time.monotonic() + timeout_seconds
+    latest_ids_by_index: dict[int, str] = {}
+
     while True:
-        task_ids = [future.task_id for future in futures]
+        task_ids = []
+        for index, future in enumerate(futures):
+            task_id = future.task_id
+            task_ids.append(task_id)
+            if task_id is not None:
+                latest_ids_by_index[index] = cast(str, task_id)
+
         if all(task_id is not None for task_id in task_ids):
             return [cast(str, task_id) for task_id in task_ids]
 
         if time.monotonic() >= deadline:
+            if latest_ids_by_index:
+                return [
+                    latest_ids_by_index[index]
+                    for index in range(len(futures))
+                    if index in latest_ids_by_index
+                ]
             raise ToolError("Timed out waiting for Globus Compute task IDs")
 
         time.sleep(polling_interval_seconds)
