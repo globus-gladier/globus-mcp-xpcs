@@ -64,6 +64,8 @@ def _compute_run_boost_corr_executable(
     import time
 
     boost_corr = dict(extra_boost_corr_params or {})
+    if "output" not in boost_corr:
+        boost_corr["output"] = str(pathlib.Path(raw).parent)
     boost_corr["raw"] = raw
     boost_corr["qmap"] = qmap
 
@@ -187,12 +189,13 @@ def run_xpcs_boost_corr(
         1. eiger4m/lambda2m/rigaku(slow mode) .h5
         2. lambda750k, legacy .imm file. we no longer use it at the beamline.
         3. rigaku500k (fast mode), one .bin file
-        4. rigaku3m (fast mode), .bin.xxx file, like .bin.001, .bin.002, etc. Always choose the
-            first .bin.000 file as raw input. The boost_corr executable will automatically detect the rest of the .bin.xxx files in the same directory.
-    
+        4. rigaku3m (fast mode), .bin.xxx file, like .bin.000, .bin.001, etc. Always choose
+            the first .bin.000 file as raw input. The boost_corr executable will automatically
+            detect the rest of the .bin.xxx files in the same directory.
+
     Boost corr writes its outputs into the directory named by extra_boost_corr_params["output"].
-    If output is not set, this tool defaults to a sibling directory named
-    boost_corr_output_claude_test under the raw file's parent directory. The completed task result
+    If output is not set, this tool defaults to the same directory as the raw file.
+    The completed task result
     reports output_file when it finds a file in that output directory whose stem matches the raw
     filename plus "_results". For example:
 
