@@ -145,7 +145,8 @@ def _compute_run_boost_corr_executable(
 def run_xpcs_boost_corr(
     raw: Annotated[
         list[str],
-        Field(min_length=1, description="Paths to the raw detector input files for boost corr"),
+        Field(min_length=1, description="Paths to the raw detector input files for boost corr." \
+        "Note that this is the compute endpoint filesystem path, not a Globus collection path. "),
     ],
     qmap: Annotated[
         str,
