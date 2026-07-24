@@ -60,10 +60,6 @@ COLLECTIONS: list[dict[str, Any]] = [
                 "path": "/xpcs_staging/agentic-testing/",
                 "permissions": "rw",
             },
-            {
-                "path": "/xpcs_staging/",
-                "permissions": "r",
-            },
         ],
     },
 ]
