@@ -549,6 +549,41 @@ def test_globus_transfer_list_directory_filters_and_caches(
     assert third.basepath == path
 
 
+def test_globus_transfer_list_directory_cached_false_bypasses_cache(
+    mock_ctx: Mock, mock_client: Mock, mock_config: dict[str, Any]
+):
+    collection_id = mock_config["COLLECTIONS"][0]["uuid"]
+    path = "/foo-read-write-directory"
+    _list_directory_entries_cached.cache_clear()
+    mock_client.operation_ls.side_effect = [
+        {"DATA": [{"name": "cached.txt"}]},
+        {"DATA": [{"name": "fresh.txt"}]},
+    ]
+
+    first = globus_transfer_list_directory(
+        collection_id=collection_id,
+        path=path,
+        cached=True,
+        filename_regex=None,
+        limit=100,
+        offset=0,
+        ctx=mock_ctx,
+    )
+    second = globus_transfer_list_directory(
+        collection_id=collection_id,
+        path=path,
+        cached=False,
+        filename_regex=None,
+        limit=100,
+        offset=0,
+        ctx=mock_ctx,
+    )
+
+    assert mock_client.operation_ls.call_count == 2
+    assert first.filenames == ["cached.txt"]
+    assert second.filenames == ["fresh.txt"]
+
+
 def test_globus_transfer_list_directory_api_error(
     mock_ctx: Mock, mock_client: Mock, mock_config: dict[str, Any]
 ):

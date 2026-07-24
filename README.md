@@ -38,7 +38,8 @@ Run Twotime analysis for cycle 2026-2, foster202606, prefix from F1173 to F1179,
 - `globus_transfer_get_task_events` - Get task events for transfer progress and troubleshooting
 - `globus_transfer_get_task_progress` - Wait for transfer progress and return task status plus recent events
 - `globus_transfer_list_directory` - List directory contents on a collection; `filename_regex`
-  filtering applies before `limit` and `offset` pagination
+  filtering applies before `limit` and `offset` pagination; `cached` defaults to `true`
+  and can be set to `false` to force a fresh listing
 
 Notes:
 - `globus_transfer_list_directory` applies `filename_regex` before pagination, so narrow queries can

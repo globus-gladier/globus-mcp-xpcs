@@ -136,8 +136,7 @@ def _normalize_posix_path(path: str) -> str:
     return normalized.rstrip("/") or "/"
 
 
-@lru_cache(maxsize=256)
-def _list_directory_entries_cached(
+def _list_directory_entries(
     client: globus_sdk.TransferClient,
     collection_id: str,
     normalized_path: str,
@@ -161,6 +160,15 @@ def _list_directory_entries_cached(
             return entries
 
         offset += _TRANSFER_LS_PAGE_SIZE
+
+
+@lru_cache(maxsize=256)
+def _list_directory_entries_cached(
+    client: globus_sdk.TransferClient,
+    collection_id: str,
+    normalized_path: str,
+) -> list[dict[str, Any]]:
+    return _list_directory_entries(client, collection_id, normalized_path)
 
 
 def _resolve_allowed_basepath(collection: dict[str, Any], allowed_basepath: str) -> str:
@@ -424,6 +432,16 @@ def globus_transfer_list_directory(
     collection_id: Annotated[str, Field(description="ID of the collection")],
     path: Annotated[str, Field(description="Path to a directory")],
     ctx: Context[ServerSession, GlobusContext],
+    cached: Annotated[
+        bool,
+        Field(
+            default=True,
+            description=(
+                "Whether to use the cached directory listing when available. "
+                "Set to false to always fetch a fresh listing from Globus Transfer."
+            ),
+        ),
+    ] = True,
     filename_regex: Annotated[
         str | None,
         Field(
@@ -445,7 +463,8 @@ def globus_transfer_list_directory(
 ) -> TransferDirectoryListing:
     """List contents of a directory on a Globus Transfer collection.
 
-    If filename_regex is provided, filtering is applied before limit and offset pagination.
+    If cached is true, the tool may reuse a cached directory listing for the same collection and
+    path. If filename_regex is provided, filtering is applied before limit and offset pagination.
     """
     client = get_transfer_client(ctx)
     normalized_path = _normalize_posix_path(path)
@@ -457,7 +476,10 @@ def globus_transfer_list_directory(
     except re.error as e:
         raise ToolError(f"Invalid filename regex '{filename_regex}': {e}") from e
 
-    entries = _list_directory_entries_cached(client, collection_id, normalized_path)
+    if cached:
+        entries = _list_directory_entries_cached(client, collection_id, normalized_path)
+    else:
+        entries = _list_directory_entries(client, collection_id, normalized_path)
     filenames = [str(entry["name"]) for entry in entries]
     if pattern is not None:
         filenames = [name for name in filenames if pattern.search(name)]
