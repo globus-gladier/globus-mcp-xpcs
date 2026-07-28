@@ -437,7 +437,7 @@ def globus_transfer_list_directory(
         Field(
             default=True,
             description=(
-                "Whether to use the cached directory listing when available. "
+                "Caching is better on source directories that are not frequently updated. "
                 "Set to false to always fetch a fresh listing from Globus Transfer."
             ),
         ),
