@@ -1,8 +1,8 @@
 [project]
-name = "globus-mcp"
-version = "0.1.1"
-description = "Globus MCP server"
-keywords = ["globus", "mcp", "llm"]
+name = "globus-mcp-xpcs"
+version = "0.1.0"
+description = "A Globus MCP Server tuned to XPCS"
+keywords = ["globus", "mcp", "llm", "xpcs", "compute", "transfer"]
 license = "Apache-2.0"
 readme = "README.md"
 requires-python = ">=3.12"
