@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from mcp.server.fastmcp.exceptions import ToolError
 
-from globus_mcp.services.xpcs.tools import (
+from globus_mcp_xpcs.services.xpcs.tools import (
     _compute_run_boost_corr_executable,
     _wait_for_task_ids,
     run_xpcs_boost_corr,
@@ -20,12 +20,12 @@ def test_run_xpcs_boost_corr_submits_one_job_per_raw_file(mock_ctx: Mock):
     ]
 
     with (
-        patch("globus_mcp.services.xpcs.tools.get_compute_client", return_value=mock_client),
+        patch("globus_mcp_xpcs.services.xpcs.tools.get_compute_client", return_value=mock_client),
         patch(
-            "globus_mcp.services.xpcs.tools.config.get_endpoint",
+            "globus_mcp_xpcs.services.xpcs.tools.config.get_endpoint",
             return_value={"config": {"queue": "debug"}},
         ),
-        patch("globus_mcp.services.xpcs.tools.Executor", return_value=mock_executor),
+        patch("globus_mcp_xpcs.services.xpcs.tools.Executor", return_value=mock_executor),
     ):
         res = run_xpcs_boost_corr(
             raw=["/path/to/raw-1.h5", "/path/to/raw-2.h5"],
@@ -68,7 +68,7 @@ def test_wait_for_task_ids_waits_for_delayed_ids():
         DelayedFuture([None, None, "task-2"]),
     ]
 
-    with patch("globus_mcp.services.xpcs.tools.time.sleep", return_value=None):
+    with patch("globus_mcp_xpcs.services.xpcs.tools.time.sleep", return_value=None):
         task_ids = _wait_for_task_ids(futures, timeout_seconds=1.0, polling_interval_seconds=0.001)
 
     assert task_ids == ["task-1", "task-2"]
@@ -98,7 +98,7 @@ def test_wait_for_task_ids_timeout_returns_available_ids():
         DelayedFuture([None, None, None]),
     ]
 
-    with patch("globus_mcp.services.xpcs.tools.time.sleep", return_value=None):
+    with patch("globus_mcp_xpcs.services.xpcs.tools.time.sleep", return_value=None):
         task_ids = _wait_for_task_ids(futures, timeout_seconds=0.001, polling_interval_seconds=0.0)
 
     assert task_ids == ["task-1"]

@@ -12,7 +12,6 @@ dependencies = [
     "globus-compute-sdk>=4.0.0,<5.0.0",
     "globus-sdk>=4.0.0,<5.0.0",
     "mcp[cli]>=1.16.0,<2.0.0",
-    "cryptography<49.0.0",
 ]
 
 [dependency-groups]
@@ -29,7 +28,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project.scripts]
-globus-mcp = "globus_mcp.server:main"
+globus-mcp-xpcs = "globus_mcp_xpcs.server:main"
 
 [tool.ruff]
 line-length = 100

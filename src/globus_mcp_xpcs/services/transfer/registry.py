@@ -1,6 +1,6 @@
 from mcp.server.fastmcp import FastMCP
 
-from globus_mcp.services.transfer.tools import ALL_TRANSFER_TOOLS
+from globus_mcp_xpcs.services.transfer.tools import ALL_TRANSFER_TOOLS
 
 
 def register_transfer(mcp: FastMCP) -> None:

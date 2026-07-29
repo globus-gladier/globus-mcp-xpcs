@@ -3,7 +3,7 @@ from globus_compute_sdk.serialize import JSONData, PureSourceTextInspect
 from mcp.server.fastmcp import Context
 from mcp.server.session import ServerSession
 
-from globus_mcp.context import GlobusContext
+from globus_mcp_xpcs.context import GlobusContext
 
 
 def get_compute_client(ctx: Context[ServerSession, GlobusContext]) -> Client:

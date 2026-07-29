@@ -8,10 +8,10 @@ from mcp.server.fastmcp.exceptions import ToolError
 from mcp.server.session import ServerSession
 from pydantic import Field
 
-from globus_mcp import config
-from globus_mcp.context import GlobusContext
-from globus_mcp.services.compute.client import get_compute_client
-from globus_mcp.services.xpcs.schemas import (
+from globus_mcp_xpcs import config
+from globus_mcp_xpcs.context import GlobusContext
+from globus_mcp_xpcs.services.compute.client import get_compute_client
+from globus_mcp_xpcs.services.xpcs.schemas import (
     CollectionBasepath,
     CollectionInfo,
     ComputeEndpointBasepath,
@@ -145,8 +145,12 @@ def _compute_run_boost_corr_executable(
 def run_xpcs_boost_corr(
     raw: Annotated[
         list[str],
-        Field(min_length=1, description="Paths to the raw detector input files for boost corr." \
-        "Note that this is the compute endpoint filesystem path, not a Globus collection path. "),
+        Field(
+            min_length=1,
+            description="Paths to the raw detector input files for boost corr."
+            "Note that this is the compute endpoint filesystem path, not a Globus "
+            "collection path. ",
+        ),
     ],
     qmap: Annotated[
         str,
@@ -165,7 +169,10 @@ def run_xpcs_boost_corr(
     ] = None,
     flow_debug: Annotated[
         bool,
-        Field(default=False, description="Enable verbose debug mode for boost corr"),
+        Field(
+            default=False,
+            description="Enable verbose debug mode for boost corr",
+        ),
     ] = False,
     compute_endpoint_id: Annotated[
         str,
@@ -176,8 +183,8 @@ def run_xpcs_boost_corr(
 
     Each raw file is submitted as an individual compute job. The executor batches the
     submissions internally, and this tool returns the UUID for each submitted task. Poll the
-    returned task_uuids with globus_compute_get_task_status to monitor progress and retrieve the
-    completed task results, including output_file.
+    returned task_uuids with globus_compute_get_task_status to monitor progress and retrieve
+    the completed task results, including output_file.
 
     Make sure source data is on the compute endpoint filesystem before running boost_corr.
     The boost_corr executable will not transfer data for you.
@@ -197,8 +204,8 @@ def run_xpcs_boost_corr(
     Boost corr writes its outputs into the directory named by extra_boost_corr_params["output"].
     If output is not set, this tool defaults to the same directory as the raw file.
     The completed task result
-    reports output_file when it finds a file in that output directory whose stem matches the raw
-    filename plus "_results". For example:
+    reports output_file when it finds a file in that output directory whose stem matches the
+    raw filename plus "_results". For example:
 
     Cb0058_D100_a0011_f2000000_r00001_t76ns.hdf
 

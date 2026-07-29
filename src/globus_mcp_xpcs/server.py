@@ -4,10 +4,10 @@ from mcp.server.fastmcp import FastMCP
 
 # Used for testing, should be removed
 # from globus_mcp.auth import get_globus_app
-from globus_mcp.context import lifespan
-from globus_mcp.services.compute.registry import register_compute
-from globus_mcp.services.transfer.registry import register_transfer
-from globus_mcp.services.xpcs.registry import register_xpcs_tools
+from globus_mcp_xpcs.context import lifespan
+from globus_mcp_xpcs.services.compute.registry import register_compute
+from globus_mcp_xpcs.services.transfer.registry import register_transfer
+from globus_mcp_xpcs.services.xpcs.registry import register_xpcs_tools
 
 mcp = FastMCP("Globus MCP Server", lifespan=lifespan)
 

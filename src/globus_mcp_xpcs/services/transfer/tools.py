@@ -13,10 +13,10 @@ from mcp.server.fastmcp.exceptions import ToolError
 from mcp.server.session import ServerSession
 from pydantic import Field
 
-from globus_mcp import config
-from globus_mcp.context import GlobusContext
-from globus_mcp.services.transfer.client import get_transfer_client
-from globus_mcp.services.transfer.schemas import (
+from globus_mcp_xpcs import config
+from globus_mcp_xpcs.context import GlobusContext
+from globus_mcp_xpcs.services.transfer.client import get_transfer_client
+from globus_mcp_xpcs.services.transfer.schemas import (
     TransferDirectoryListing,
     TransferEndpoint,
     TransferEndpointList,

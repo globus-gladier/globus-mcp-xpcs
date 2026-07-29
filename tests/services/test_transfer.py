@@ -9,11 +9,11 @@ from globus_sdk import GlobusAPIError, IterableTransferResponse, TransferClient,
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 
-from globus_mcp.context import GlobusContext
-from globus_mcp.server import service_registry
-from globus_mcp.services.transfer.client import get_transfer_client
-from globus_mcp.services.transfer.registry import register_transfer
-from globus_mcp.services.transfer.tools import (
+from globus_mcp_xpcs.context import GlobusContext
+from globus_mcp_xpcs.server import service_registry
+from globus_mcp_xpcs.services.transfer.client import get_transfer_client
+from globus_mcp_xpcs.services.transfer.registry import register_transfer
+from globus_mcp_xpcs.services.transfer.tools import (
     ALL_TRANSFER_TOOLS,
     _format_search_response,
     _handle_gare,
@@ -30,7 +30,7 @@ from tests.utils import random_string
 
 @pytest.fixture
 def mock_client():
-    with patch("globus_mcp.services.transfer.tools.get_transfer_client") as mock_get_client:
+    with patch("globus_mcp_xpcs.services.transfer.tools.get_transfer_client") as mock_get_client:
         mc = Mock(spec=TransferClient)
         mock_get_client.return_value = mc
         yield mc
@@ -38,13 +38,15 @@ def mock_client():
 
 @pytest.fixture
 def mock_handle_gare():
-    with patch("globus_mcp.services.transfer.tools._handle_gare") as _mock_handle_gare:
+    with patch("globus_mcp_xpcs.services.transfer.tools._handle_gare") as _mock_handle_gare:
         yield _mock_handle_gare
 
 
 @pytest.fixture
 def mock_format_search_res():
-    with patch("globus_mcp.services.transfer.tools._format_search_response") as _format_search_res:
+    with patch(
+        "globus_mcp_xpcs.services.transfer.tools._format_search_response"
+    ) as _format_search_res:
         yield _format_search_res
 
 
@@ -289,7 +291,7 @@ async def test_globus_transfer_submit_task(
         ],
     }
 
-    with patch("globus_mcp.services.transfer.tools.asyncio.sleep", new_callable=AsyncMock):
+    with patch("globus_mcp_xpcs.services.transfer.tools.asyncio.sleep", new_callable=AsyncMock):
         res = await globus_transfer_submit_task(
             source_collection_id=mock_config["COLLECTIONS"][0]["uuid"],
             destination_collection_id=mock_config["COLLECTIONS"][1]["uuid"],

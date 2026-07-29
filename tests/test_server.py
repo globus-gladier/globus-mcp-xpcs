@@ -2,14 +2,14 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from globus_mcp.server import main, mcp, services
+from globus_mcp_xpcs.server import main, mcp, services
 from tests.utils import random_string
 
 
 @patch.object(mcp, "run")
 def test_run_server_default(mock_mcp_run: Mock):
     with patch.dict(
-        "globus_mcp.server.service_registry", {s: Mock() for s in services}
+        "globus_mcp_xpcs.server.service_registry", {s: Mock() for s in services}
     ) as service_registry:
         with patch("sys.argv", ["globus-mcp"]):
             main()
@@ -22,7 +22,7 @@ def test_run_server_default(mock_mcp_run: Mock):
 @pytest.mark.parametrize("registered", [services[: i + 1] for i in range(len(services))])
 def test_run_server_with_select_services(mock_mcp_run: Mock, registered: list[str]):
     with patch.dict(
-        "globus_mcp.server.service_registry", {s: Mock() for s in services}
+        "globus_mcp_xpcs.server.service_registry", {s: Mock() for s in services}
     ) as service_registry:
         args = ["globus-mcp", "--services"] + registered
         with patch("sys.argv", args):

@@ -13,11 +13,11 @@ from globus_sdk import GlobusAPIError
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 
-from globus_mcp.context import GlobusContext
-from globus_mcp.server import service_registry
-from globus_mcp.services.compute.client import get_compute_client
-from globus_mcp.services.compute.registry import register_compute
-from globus_mcp.services.compute.tools import (
+from globus_mcp_xpcs.context import GlobusContext
+from globus_mcp_xpcs.server import service_registry
+from globus_mcp_xpcs.services.compute.client import get_compute_client
+from globus_mcp_xpcs.services.compute.registry import register_compute
+from globus_mcp_xpcs.services.compute.tools import (
     _SHELL_FUNCTION_TEMPLATE,
     ALL_COMPUTE_TOOLS,
     globus_compute_get_task_status,
@@ -31,7 +31,7 @@ from tests.utils import random_string
 
 @pytest.fixture
 def mock_client():
-    with patch("globus_mcp.services.compute.tools.get_compute_client") as mock_get_client:
+    with patch("globus_mcp_xpcs.services.compute.tools.get_compute_client") as mock_get_client:
         mc = Mock(spec=Client)
         mc.fx_serializer = Mock()
         mc._compute_web_client = Mock()
@@ -289,7 +289,7 @@ async def test_globus_compute_get_task_status(
     mock_client.fx_serializer.deserialize.return_value = result
 
     with patch(
-        "globus_mcp.services.compute.tools.asyncio.sleep",
+        "globus_mcp_xpcs.services.compute.tools.asyncio.sleep",
         new_callable=AsyncMock,
     ) as mock_sleep:
         res = await globus_compute_get_task_status(

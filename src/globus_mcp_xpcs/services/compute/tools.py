@@ -11,9 +11,9 @@ from mcp.server.fastmcp.exceptions import ToolError
 from mcp.server.session import ServerSession
 from pydantic import Field
 
-from globus_mcp.context import GlobusContext
-from globus_mcp.services.compute.client import get_compute_client
-from globus_mcp.services.compute.schemas import (
+from globus_mcp_xpcs.context import GlobusContext
+from globus_mcp_xpcs.services.compute.client import get_compute_client
+from globus_mcp_xpcs.services.compute.schemas import (
     ComputeEndpoint,
     ComputeFunctionRegisterResponse,
     ComputeSubmitResponse,

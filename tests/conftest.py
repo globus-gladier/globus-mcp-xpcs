@@ -3,7 +3,7 @@ from unittest.mock import Mock
 import pytest
 from mcp.server.fastmcp import Context
 
-from globus_mcp.context import GlobusContext
+from globus_mcp_xpcs.context import GlobusContext
 
 
 @pytest.fixture
@@ -75,6 +75,6 @@ def mock_config(monkeypatch):
             ],
         },
     ]
-    monkeypatch.setattr("globus_mcp.config.COMPUTE_ENDPOINTS", COMPUTE_ENDPOINTS)
-    monkeypatch.setattr("globus_mcp.config.COLLECTIONS", COLLECTIONS)
+    monkeypatch.setattr("globus_mcp_xpcs.config.COMPUTE_ENDPOINTS", COMPUTE_ENDPOINTS)
+    monkeypatch.setattr("globus_mcp_xpcs.config.COLLECTIONS", COLLECTIONS)
     return {"COMPUTE_ENDPOINTS": COMPUTE_ENDPOINTS, "COLLECTIONS": COLLECTIONS}
