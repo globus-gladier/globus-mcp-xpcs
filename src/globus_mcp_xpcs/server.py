@@ -85,7 +85,10 @@ def main() -> None:
     for service in args.services:
         service_registry[service](mcp)
 
-    mcp.run(transport=args.transport)
+    try:
+        mcp.run(transport=args.transport)
+    except KeyboardInterrupt:
+        log.info("Shutting down Globus MCP XPCS Server...")
 
 
 if __name__ == "__main__":
