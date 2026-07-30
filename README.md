@@ -46,7 +46,7 @@ Notes:
   still return matches without raising `limit`.
 This README intentionally documents only XPCS and Transfer tools. Compute service tools are omitted.
 
-## Configuration
+## Client Configuration
 
 The following configuration is compatible with most LLM applications that support MCP such as
 [Claude Desktop](https://modelcontextprotocol.io/docs/develop/connect-local-servers):
@@ -54,33 +54,24 @@ The following configuration is compatible with most LLM applications that suppor
 ```json
 {
   "mcpServers": {
-    "globus-mcp": {
-      "command": "uvx",
-      "args": ["globus-mcp-xpcs"]
+    "globus-mcp-xpcs": {
+      "type": "http", 
+      "url": "http://127.0.0.1:8000/mcp"
     }
-  }
+  },
 }
 ```
 
-### Limiting Tool Registration
+## Server Configuration
 
-By default, the Globus MCP server registers tools for every service. To register tools for only
-specific services, use the `--services` command-line flag:
+Install the latest server (supports Python 3.12 or later), set your secrets,
+and run the service:
 
-```json
-{
-  "mcpServers": {
-    "globus-mcp": {
-      "command": "uvx",
-      "args": [
-        "globus-mcp",
-        "--services",
-        "xpcs",
-        "transfer"
-      ]
-    }
-  }
-}
+```
+pip install globus-mcp-server
+export GLOBUS_CLIENT_ID="my-client-id"
+export GLOBUS_CLIENT_SECRET="my-client-secret"
+globus-mcp-xpcs
 ```
 
 ### Specifying Client Credentials
@@ -94,7 +85,7 @@ credentials via the `GLOBUS_CLIENT_ID` and `GLOBUS_CLIENT_SECRET` environment va
   "mcpServers": {
     "globus-mcp": {
       "command": "uvx",
-      "args": ["globus-mcp"],
+      "args": ["globus-mcp-xpcs", "--transport", "stdio"],
       "env": {
         "GLOBUS_CLIENT_ID": "...",
         "GLOBUS_CLIENT_SECRET": "..."
