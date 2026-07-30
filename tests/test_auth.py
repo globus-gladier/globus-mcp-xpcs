@@ -1,10 +1,10 @@
 import uuid
 
 import pytest
-from globus_sdk import ClientApp, UserApp
+from globus_sdk import ClientApp
 from pytest import MonkeyPatch
 
-from globus_mcp_xpcs.auth import DEFAULT_CLIENT_ID, get_globus_app
+from globus_mcp_xpcs.auth import get_globus_app
 from tests.utils import random_string
 
 
@@ -23,4 +23,6 @@ def test_get_globus_app_missing_client_id(monkeypatch: MonkeyPatch):
     monkeypatch.setenv("GLOBUS_CLIENT_SECRET", client_secret)
     with pytest.raises(ValueError) as exc_info:
         get_globus_app()
-    assert "Both GLOBUS_CLIENT_ID and GLOBUS_CLIENT_SECRET must be set in the environment." in str(exc_info.value)
+    assert "Both GLOBUS_CLIENT_ID and GLOBUS_CLIENT_SECRET must be set in the environment." in str(
+        exc_info.value
+    )
