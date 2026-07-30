@@ -438,7 +438,8 @@ def globus_transfer_list_directory(
             default=True,
             description=(
                 "Caching is better on source directories that are not frequently updated. "
-                "Set to false to always fetch a fresh listing from Globus Transfer."
+                "Caching should always be used on read-only directories."
+                "Set to false if monitoring for new files in a frequently updated directory."
             ),
         ),
     ] = True,
