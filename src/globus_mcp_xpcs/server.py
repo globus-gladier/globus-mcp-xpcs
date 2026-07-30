@@ -1,4 +1,5 @@
 import argparse
+import logging
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -8,6 +9,7 @@ from globus_mcp_xpcs.services.compute.registry import register_compute
 from globus_mcp_xpcs.services.transfer.registry import register_transfer
 from globus_mcp_xpcs.services.xpcs.registry import register_xpcs_tools
 
+log = logging.getLogger(__name__)
 service_registry = {
     "compute": register_compute,
     "transfer": register_transfer,
@@ -15,6 +17,17 @@ service_registry = {
 }
 services = ["transfer", "compute", "xpcs"]
 transports = ["streamable-http", "stdio"]
+
+
+def _configure_console_logging() -> None:
+    root_logger = logging.getLogger()
+    if not root_logger.handlers:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        )
+    else:
+        root_logger.setLevel(logging.INFO)
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -54,6 +67,10 @@ def parse_arguments() -> argparse.Namespace:
 def main() -> None:
     args = parse_arguments()
 
+    _configure_console_logging()
+
+    config_path = args.config or config.USER_CONFIG_PATH
+    log.info("Using config file: %s", config_path)
     config.load_user_config(args.config)
 
     mcp = FastMCP(
