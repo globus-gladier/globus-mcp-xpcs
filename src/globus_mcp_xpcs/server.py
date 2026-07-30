@@ -7,15 +7,13 @@ from globus_mcp_xpcs.services.compute.registry import register_compute
 from globus_mcp_xpcs.services.transfer.registry import register_transfer
 from globus_mcp_xpcs.services.xpcs.registry import register_xpcs_tools
 
-mcp = FastMCP("Globus MCP Server", stateless_http=True, host="127.0.0.1", port=8000)
-
-
 service_registry = {
     "compute": register_compute,
     "transfer": register_transfer,
     "xpcs": register_xpcs_tools,
 }
 services = ["transfer", "compute", "xpcs"]
+transports = ["streamable-http", "stdio"]
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -28,9 +26,21 @@ def parse_arguments() -> argparse.Namespace:
         help="Globus services to install tools for. Defaults to all services.",
     )
     parser.add_argument(
-        "--test",
-        action="store_true",
-        help="Test new functionality",
+        "--host",
+        default="127.0.0.1",
+        help="Host address to bind the HTTP server.",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port to bind the HTTP server.",
+    )
+    parser.add_argument(
+        "--transport",
+        choices=transports,
+        default="streamable-http",
+        help="Transport for MCP server. Defaults to streamable-http.",
     )
     return parser.parse_args()
 
@@ -39,10 +49,18 @@ def main() -> None:
     config.load_user_config()
 
     args = parse_arguments()
+
+    mcp = FastMCP(
+        "Globus MCP Server",
+        stateless_http=True,
+        host=args.host,
+        port=args.port,
+    )
+
     for service in args.services:
         service_registry[service](mcp)
 
-    mcp.run(transport="streamable-http")
+    mcp.run(transport=args.transport)
 
 
 if __name__ == "__main__":
