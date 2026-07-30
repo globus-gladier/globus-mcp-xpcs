@@ -8,7 +8,6 @@ readme = "README.md"
 requires-python = ">=3.12"
 authors = [{ name = "Globus", email = "support@globus.org" }]
 dependencies = [
-    "fastapi>=0.116.0,<1.0.0",
     "globus-compute-sdk>=4.0.0,<5.0.0",
     "globus-sdk>=4.0.0,<5.0.0",
     "mcp[cli]>=1.16.0,<2.0.0",
