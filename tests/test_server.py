@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
@@ -15,7 +16,7 @@ def test_run_server_default(mock_fastmcp: Mock):
         ) as service_registry:
             with patch("sys.argv", ["globus-mcp"]):
                 main()
-                mock_load_config.assert_called_once_with()
+                mock_load_config.assert_called_once_with(None)
                 mock_fastmcp.assert_called_once_with(
                     "Globus MCP Server",
                     stateless_http=True,
@@ -39,7 +40,7 @@ def test_run_server_with_select_services(mock_fastmcp: Mock, registered: list[st
             with patch("sys.argv", args):
                 main()
 
-                mock_load_config.assert_called_once_with()
+                mock_load_config.assert_called_once_with(None)
                 for service in registered:
                     service_registry[service].assert_called_once_with(mcp_instance)
 
@@ -58,7 +59,7 @@ def test_run_server_with_invalid_service(mock_fastmcp: Mock):
             with pytest.raises(SystemExit) as exc_info:
                 main()
             assert exc_info.value.code == 2  # argparse error exit code
-            mock_load_config.assert_called_once_with()
+            mock_load_config.assert_not_called()
             mock_fastmcp.assert_not_called()
 
 
@@ -73,7 +74,7 @@ def test_run_server_with_host_and_port(mock_fastmcp: Mock):
             with patch("sys.argv", args):
                 main()
 
-                mock_load_config.assert_called_once_with()
+                mock_load_config.assert_called_once_with(None)
                 mock_fastmcp.assert_called_once_with(
                     "Globus MCP Server",
                     stateless_http=True,
@@ -97,8 +98,25 @@ def test_run_server_with_stdio_transport(mock_fastmcp: Mock):
             with patch("sys.argv", args):
                 main()
 
-                mock_load_config.assert_called_once_with()
+                mock_load_config.assert_called_once_with(None)
                 for service in services:
                     service_registry[service].assert_called_once_with(mcp_instance)
 
                 mcp_instance.run.assert_called_once_with(transport="stdio")
+
+
+@patch("globus_mcp_xpcs.server.FastMCP")
+def test_run_server_with_custom_config_path(mock_fastmcp: Mock):
+    mcp_instance = mock_fastmcp.return_value
+    with patch("globus_mcp_xpcs.server.config.load_user_config") as mock_load_config:
+        with patch.dict(
+            "globus_mcp_xpcs.server.service_registry", {s: Mock() for s in services}
+        ) as service_registry:
+            args = ["globus-mcp", "--config", "/tmp/custom-config.json"]
+            with patch("sys.argv", args):
+                main()
+
+                mock_load_config.assert_called_once_with(Path("/tmp/custom-config.json"))
+                for service in services:
+                    service_registry[service].assert_called_once_with(mcp_instance)
+                mcp_instance.run.assert_called_once_with(transport="streamable-http")

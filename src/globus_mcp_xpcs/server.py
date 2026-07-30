@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
@@ -42,13 +43,18 @@ def parse_arguments() -> argparse.Namespace:
         default="streamable-http",
         help="Transport for MCP server. Defaults to streamable-http.",
     )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        help="Path to a JSON config file. Defaults to ~/.globus-mcp-xpcs.json.",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
-    config.load_user_config()
-
     args = parse_arguments()
+
+    config.load_user_config(args.config)
 
     mcp = FastMCP(
         "Globus MCP Server",
