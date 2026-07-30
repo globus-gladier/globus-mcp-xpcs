@@ -1,5 +1,5 @@
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 
@@ -22,6 +22,7 @@ def test_run_server_default(mock_fastmcp: Mock):
                     mock_fastmcp.assert_called_once_with(
                         "Globus MCP Server",
                         stateless_http=True,
+                        lifespan=ANY,
                         host="127.0.0.1",
                         port=8000,
                     )
@@ -86,6 +87,7 @@ def test_run_server_with_host_and_port(mock_fastmcp: Mock):
                     mock_fastmcp.assert_called_once_with(
                         "Globus MCP Server",
                         stateless_http=True,
+                        lifespan=ANY,
                         host="0.0.0.0",
                         port=9000,
                     )
