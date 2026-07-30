@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import copy
+import json
 from collections.abc import Iterable
+from pathlib import Path
 from typing import Any
+
+USER_CONFIG_PATH = Path("~/.globus-mcp-xpcs.json").expanduser()
 
 DEFAULT_COMPUTE_ENDPOINT = "d88919ea-026a-493e-9124-fe3c46defa54"
 COMPUTE_ENDPOINTS: list[dict[str, Any]] = [
@@ -53,7 +58,10 @@ COLLECTIONS: list[dict[str, Any]] = [
         "uuid": "98d26f35-e5d5-4edd-becf-a75520656c64",
         "display_name": "Eagle APS Data Processing",
         "filesystem": "eagle",
-        "description": "Globus Collection for source data for XPCS processing",
+        "description": (
+            "Globus Collection for staging XPCS data on the eagle cluster "
+            "for processing with Globus Compute"
+        ),
         "collection_basepath": "/eagle/APSDataProcessing/aps8idi/",
         "allowed_basepaths": [
             {
@@ -81,3 +89,45 @@ def get_endpoint(endpoint_id: str) -> dict[str, Any] | None:
         if endpoint["uuid"] == endpoint_id:
             return endpoint
     return None
+
+
+def _current_config_payload() -> dict[str, Any]:
+    return {
+        "DEFAULT_COMPUTE_ENDPOINT": DEFAULT_COMPUTE_ENDPOINT,
+        "COMPUTE_ENDPOINTS": copy.deepcopy(COMPUTE_ENDPOINTS),
+        "COLLECTIONS": copy.deepcopy(COLLECTIONS),
+    }
+
+
+def _apply_config_payload(payload: dict[str, Any]) -> None:
+    global DEFAULT_COMPUTE_ENDPOINT
+    global COMPUTE_ENDPOINTS
+    global COLLECTIONS
+
+    default_endpoint = payload.get("DEFAULT_COMPUTE_ENDPOINT", DEFAULT_COMPUTE_ENDPOINT)
+    endpoints = payload.get("COMPUTE_ENDPOINTS", COMPUTE_ENDPOINTS)
+    collections = payload.get("COLLECTIONS", COLLECTIONS)
+
+    if not isinstance(default_endpoint, str):
+        raise ValueError("DEFAULT_COMPUTE_ENDPOINT must be a string")
+    if not isinstance(endpoints, list) or not all(isinstance(ep, dict) for ep in endpoints):
+        raise ValueError("COMPUTE_ENDPOINTS must be a list of objects")
+    if not isinstance(collections, list) or not all(isinstance(col, dict) for col in collections):
+        raise ValueError("COLLECTIONS must be a list of objects")
+
+    DEFAULT_COMPUTE_ENDPOINT = default_endpoint
+    COMPUTE_ENDPOINTS = [dict(ep) for ep in endpoints]
+    COLLECTIONS = [dict(col) for col in collections]
+
+
+def load_user_config(config_path: Path | None = None) -> None:
+    path = config_path or USER_CONFIG_PATH
+
+    if not path.exists():
+        path.write_text(json.dumps(_current_config_payload(), indent=2) + "\n")
+
+    payload = json.loads(path.read_text())
+    if not isinstance(payload, dict):
+        raise ValueError("Config file must be a JSON object")
+
+    _apply_config_payload(payload)
