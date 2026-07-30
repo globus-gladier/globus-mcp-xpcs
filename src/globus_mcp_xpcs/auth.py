@@ -19,11 +19,7 @@ def get_globus_app() -> globus_sdk.GlobusApp:
         return globus_sdk.ClientApp(
             app_name=app_name, client_id=client_id, client_secret=client_secret
         )
-
-    elif client_secret:
-        raise ValueError("GLOBUS_CLIENT_SECRET requires GLOBUS_CLIENT_ID to be set")
-
     else:
-        client_id = client_id or DEFAULT_CLIENT_ID
-        config = globus_sdk.GlobusAppConfig(login_flow_manager="local-server")
-        return globus_sdk.UserApp(app_name=app_name, client_id=client_id, config=config)
+        raise ValueError(
+            "Both GLOBUS_CLIENT_ID and GLOBUS_CLIENT_SECRET must be set in the environment."
+        )
