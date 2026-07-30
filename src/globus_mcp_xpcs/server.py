@@ -5,6 +5,7 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 from globus_mcp_xpcs import config
+from globus_mcp_xpcs.context import lifespan
 from globus_mcp_xpcs.services.compute.registry import register_compute
 from globus_mcp_xpcs.services.transfer.registry import register_transfer
 from globus_mcp_xpcs.services.xpcs.registry import register_xpcs_tools
@@ -76,6 +77,7 @@ def main() -> None:
     mcp = FastMCP(
         "Globus MCP Server",
         stateless_http=True,
+        lifespan=lifespan,
         host=args.host,
         port=args.port,
     )
