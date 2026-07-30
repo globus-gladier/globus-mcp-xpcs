@@ -56,7 +56,7 @@ The following configuration is compatible with most LLM applications that suppor
   "mcpServers": {
     "globus-mcp": {
       "command": "uvx",
-      "args": ["globus-mcp"]
+      "args": ["globus-mcp-xpcs"]
     }
   }
 }
