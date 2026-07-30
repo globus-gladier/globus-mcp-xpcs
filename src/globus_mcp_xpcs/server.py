@@ -9,7 +9,7 @@ from globus_mcp_xpcs.services.compute.registry import register_compute
 from globus_mcp_xpcs.services.transfer.registry import register_transfer
 from globus_mcp_xpcs.services.xpcs.registry import register_xpcs_tools
 
-mcp = FastMCP("Globus MCP Server", lifespan=lifespan)
+mcp = FastMCP("Globus MCP Server", stateless_http=True, host="127.0.0.1", port=8000)
 
 
 service_registry = {
@@ -70,7 +70,7 @@ def main() -> None:
     for service in args.services:
         service_registry[service](mcp)
 
-    mcp.run(transport="stdio")
+    mcp.run(transport="streamable-http")
 
 
 if __name__ == "__main__":
