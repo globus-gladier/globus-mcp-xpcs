@@ -28,6 +28,20 @@ class ComputeTask(BaseModel):
     )
 
 
+class ComputeEndpointBasepath(BaseModel):
+    path: str = Field(description="Allowed filesystem path on the endpoint.")
+    permissions: str = Field(description="Permission flags for this path, e.g. 'r', 'w', or 'rw'.")
+
+
+class ComputeEndpointInfo(BaseModel):
+    uuid: str = Field(description="UUID of the compute endpoint.")
+    display_name: str = Field(description="Human-readable name of the endpoint.")
+    description: str = Field(description="Description of the endpoint and its purpose.")
+    allowed_basepaths: list[ComputeEndpointBasepath] = Field(
+        description="Filesystem paths this endpoint is permitted to access."
+    )
+
+
 class ComputeTaskBatchProgress(BaseModel):
     total_tasks: int = Field(description="Total number of task IDs requested.")
     completed_tasks: int = Field(description="Number of tasks that have completed.")

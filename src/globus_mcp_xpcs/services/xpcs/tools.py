@@ -12,10 +12,6 @@ from globus_mcp_xpcs import config
 from globus_mcp_xpcs.context import GlobusContext
 from globus_mcp_xpcs.services.compute.client import get_compute_client
 from globus_mcp_xpcs.services.xpcs.schemas import (
-    CollectionBasepath,
-    CollectionInfo,
-    ComputeEndpointBasepath,
-    ComputeEndpointInfo,
     XPCSBoostCorrSubmitResponse,
 )
 
@@ -465,50 +461,7 @@ def get_generic_metadata(
         raise ToolError(f"Failed to run boost_corr compute function: {e}") from e
 
 
-def list_xpcs_collections() -> list[CollectionInfo]:
-    """List the configured XPCS Globus Transfer collections and their allowed
-    filesystem paths/permissions."""
-    return [
-        CollectionInfo(
-            uuid=col["uuid"],
-            display_name=col["display_name"],
-            description=col["description"],
-            collection_basepath=col["collection_basepath"],
-            allowed_basepaths=[
-                CollectionBasepath(
-                    path=bp["path"],
-                    permissions=bp["permissions"],
-                )
-                for bp in col.get("allowed_basepaths", [])
-            ],
-        )
-        for col in config.COLLECTIONS
-    ]
-
-
-def list_xpcs_compute_endpoints() -> list[ComputeEndpointInfo]:
-    """List the configured XPCS compute endpoints and their allowed
-    filesystem paths/permissions."""
-    return [
-        ComputeEndpointInfo(
-            uuid=ep["uuid"],
-            display_name=ep["display_name"],
-            description=ep["description"],
-            allowed_basepaths=[
-                ComputeEndpointBasepath(
-                    path=bp["path"],
-                    permissions=bp["permissions"],
-                )
-                for bp in ep.get("allowed_basepaths", [])
-            ],
-        )
-        for ep in config.COMPUTE_ENDPOINTS
-    ]
-
-
 ALL_XPCS_TOOLS: list[Callable[..., Any]] = [
-    list_xpcs_collections,
-    list_xpcs_compute_endpoints,
     run_xpcs_boost_corr,
     get_boost_corr_metadata,
     get_generic_metadata,

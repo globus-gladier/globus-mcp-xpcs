@@ -17,6 +17,8 @@ from globus_mcp_xpcs import config
 from globus_mcp_xpcs.context import GlobusContext
 from globus_mcp_xpcs.services.transfer.client import get_transfer_client
 from globus_mcp_xpcs.services.transfer.schemas import (
+    CollectionBasepath,
+    CollectionInfo,
     TransferDirectoryListing,
     TransferEndpoint,
     TransferEndpointList,
@@ -490,11 +492,33 @@ def globus_transfer_list_directory(
     return TransferDirectoryListing(filenames=filenames, basepath=normalized_path)
 
 
+def list_collections() -> list[CollectionInfo]:
+    """List the configured XPCS Globus Transfer collections and their allowed
+    filesystem paths/permissions."""
+    return [
+        CollectionInfo(
+            uuid=col["uuid"],
+            display_name=col["display_name"],
+            description=col["description"],
+            collection_basepath=col["collection_basepath"],
+            allowed_basepaths=[
+                CollectionBasepath(
+                    path=bp["path"],
+                    permissions=bp["permissions"],
+                )
+                for bp in col.get("allowed_basepaths", [])
+            ],
+        )
+        for col in config.COLLECTIONS
+    ]
+
+
 ALL_TRANSFER_TOOLS: list[Callable[..., Any]] = [
     globus_transfer_search_endpoints_and_collections,
     globus_transfer_list_endpoints_and_collections,
-    globus_transfer_submit_task,
+    # globus_transfer_submit_task,
     globus_transfer_get_task_events,
     globus_transfer_get_task_progress,
-    globus_transfer_list_directory,
+    # globus_transfer_list_directory,
+    list_collections,
 ]

@@ -9,9 +9,12 @@ from mcp.server.fastmcp.exceptions import ToolError
 from mcp.server.session import ServerSession
 from pydantic import Field
 
+from globus_mcp_xpcs import config
 from globus_mcp_xpcs.context import GlobusContext
 from globus_mcp_xpcs.services.compute.client import get_compute_client
 from globus_mcp_xpcs.services.compute.schemas import (
+    ComputeEndpointBasepath,
+    ComputeEndpointInfo,
     ComputeTask,
     ComputeTaskBatchProgress,
 )
@@ -99,6 +102,27 @@ async def globus_compute_get_task_status(
     )
 
 
+def list_compute_endpoints() -> list[ComputeEndpointInfo]:
+    """List the configured XPCS compute endpoints and their allowed
+    filesystem paths/permissions."""
+    return [
+        ComputeEndpointInfo(
+            uuid=ep["uuid"],
+            display_name=ep["display_name"],
+            description=ep["description"],
+            allowed_basepaths=[
+                ComputeEndpointBasepath(
+                    path=bp["path"],
+                    permissions=bp["permissions"],
+                )
+                for bp in ep.get("allowed_basepaths", [])
+            ],
+        )
+        for ep in config.COMPUTE_ENDPOINTS
+    ]
+
+
 ALL_COMPUTE_TOOLS: list[Callable[..., Any]] = [
     globus_compute_get_task_status,
+    list_compute_endpoints,
 ]

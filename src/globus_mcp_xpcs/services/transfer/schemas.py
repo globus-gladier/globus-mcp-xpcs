@@ -42,6 +42,28 @@ class TransferDirectoryListing(BaseModel):
 
 
 ###
+# Config Collections
+###
+
+
+class CollectionBasepath(BaseModel):
+    path: str = Field(description="Allowed filesystem path on the collection.")
+    permissions: str = Field(description="Permission flags for this path, e.g. 'r', 'w', or 'rw'.")
+
+
+class CollectionInfo(BaseModel):
+    uuid: str = Field(description="UUID of the Globus collection.")
+    display_name: str = Field(description="Human-readable name of the collection.")
+    description: str = Field(description="Description of the collection and its purpose.")
+    collection_basepath: str = Field(
+        description="Root path of the collection on the storage system."
+    )
+    allowed_basepaths: list[CollectionBasepath] = Field(
+        description="Filesystem paths this collection is permitted to access."
+    )
+
+
+###
 # Pagination
 ###
 
