@@ -1,6 +1,8 @@
 import asyncio
+import logging
 import time
 from collections.abc import Callable
+from functools import lru_cache
 from typing import Annotated, Any, cast
 
 import globus_sdk
@@ -15,9 +17,29 @@ from globus_mcp_xpcs.services.compute.client import get_compute_client
 from globus_mcp_xpcs.services.compute.schemas import (
     ComputeEndpointBasepath,
     ComputeEndpointInfo,
+    ComputeEndpointMetadata,
+    ComputeEndpointStatus,
     ComputeTask,
     ComputeTaskBatchProgress,
 )
+
+log = logging.getLogger(__name__)
+
+
+@lru_cache
+def register_function(python_callable: Callable[..., Any], globus_compute_client: Any) -> str:
+    """Register a Python function with Globus Compute, and cache the registration for future use.
+    Functions are kept for the lifetime of the process.
+
+    Args:
+        python_callable: The Python function to register.
+        globus_compute_client: An instance of the Globus Compute client.
+    Returns:
+        The uuid of the registered function.
+    Raises:
+        GlobusAPIError: If the function registration fails.
+    """
+    return cast(str, globus_compute_client.register_function(python_callable))
 
 
 def _task_has_outcome(task_data: dict[str, Any]) -> bool:
@@ -122,7 +144,46 @@ def list_compute_endpoints() -> list[ComputeEndpointInfo]:
     ]
 
 
+def globus_compute_get_endpoint_status(
+    endpoint_id: Annotated[
+        str,
+        Field(min_length=1, description="Compute endpoint ID to check status for."),
+    ],
+    ctx: Context[ServerSession, GlobusContext],
+) -> ComputeEndpointStatus:
+    """Get live status details for a specific Globus Compute endpoint."""
+    client = get_compute_client(ctx)
+
+    try:
+        status_res = client.get_endpoint_status(endpoint_id)
+        return ComputeEndpointStatus(
+            status=str(status_res.get("status", "")),
+        )
+    except globus_sdk.GlobusAPIError as e:
+        raise ToolError(f"Failed to get endpoint status: {e}") from e
+
+
+def globus_compute_get_endpoint_metadata(
+    endpoint_id: Annotated[
+        str,
+        Field(min_length=1, description="Compute endpoint ID to fetch metadata for."),
+    ],
+    ctx: Context[ServerSession, GlobusContext],
+) -> ComputeEndpointMetadata:
+    """Get metadata for a specific Globus Compute endpoint."""
+    client = get_compute_client(ctx)
+
+    try:
+        metadata_res = client.get_endpoint_metadata(endpoint_id)
+        metadata = dict(cast(dict[str, Any], metadata_res))
+        return ComputeEndpointMetadata(metadata=metadata)
+    except globus_sdk.GlobusAPIError as e:
+        raise ToolError(f"Failed to get endpoint metadata: {e}") from e
+
+
 ALL_COMPUTE_TOOLS: list[Callable[..., Any]] = [
     globus_compute_get_task_status,
     list_compute_endpoints,
+    globus_compute_get_endpoint_status,
+    globus_compute_get_endpoint_metadata,
 ]

@@ -42,6 +42,16 @@ class ComputeEndpointInfo(BaseModel):
     )
 
 
+class ComputeEndpointStatus(BaseModel):
+    status: str = Field(description="Current status string for the compute endpoint.")
+
+
+class ComputeEndpointMetadata(BaseModel):
+    metadata: dict[str, JsonValue] = Field(
+        description="Metadata payload returned for the compute endpoint."
+    )
+
+
 class ComputeTaskBatchProgress(BaseModel):
     total_tasks: int = Field(description="Total number of task IDs requested.")
     completed_tasks: int = Field(description="Number of tasks that have completed.")
