@@ -1,7 +1,8 @@
-import time
+import logging
 from collections.abc import Callable
 from typing import Annotated, Any, cast
 
+import globus_sdk
 from globus_compute_sdk import Executor
 from mcp.server.fastmcp import Context
 from mcp.server.fastmcp.exceptions import ToolError
@@ -11,40 +12,12 @@ from pydantic import Field
 from globus_mcp_xpcs import config
 from globus_mcp_xpcs.context import GlobusContext
 from globus_mcp_xpcs.services.compute.client import get_compute_client
+from globus_mcp_xpcs.services.compute.tools import register_function
 from globus_mcp_xpcs.services.xpcs.schemas import (
     XPCSBoostCorrSubmitResponse,
 )
 
-
-def _wait_for_task_ids(
-    futures: list[Any],
-    timeout_seconds: float = 10.0,
-    polling_interval_seconds: float = 1.0,
-) -> list[str]:
-    deadline = time.monotonic() + timeout_seconds
-    latest_ids_by_index: dict[int, str] = {}
-
-    while True:
-        task_ids = []
-        for index, future in enumerate(futures):
-            task_id = future.task_id
-            task_ids.append(task_id)
-            if task_id is not None:
-                latest_ids_by_index[index] = cast(str, task_id)
-
-        if all(task_id is not None for task_id in task_ids):
-            return [cast(str, task_id) for task_id in task_ids]
-
-        if time.monotonic() >= deadline:
-            if latest_ids_by_index:
-                return [
-                    latest_ids_by_index[index]
-                    for index in range(len(futures))
-                    if index in latest_ids_by_index
-                ]
-            raise ToolError("Timed out waiting for Globus Compute task IDs")
-
-        time.sleep(polling_interval_seconds)
+log = logging.getLogger(__name__)
 
 
 def _compute_run_boost_corr_executable(
@@ -139,13 +112,13 @@ def _compute_run_boost_corr_executable(
 
 
 def run_xpcs_boost_corr(
-    raw: Annotated[
+    raw_files: Annotated[
         list[str],
         Field(
             min_length=1,
-            description="Paths to the raw detector input files for boost corr."
-            "Note that this is the compute endpoint filesystem path, not a Globus "
-            "collection path. ",
+            description="Raw detector input files for boost corr. Each file must be on the "
+            "compute endpoint filesystem and under the configured allowed basepath for the "
+            "endpoint.",
         ),
     ],
     qmap: Annotated[
@@ -175,12 +148,12 @@ def run_xpcs_boost_corr(
         Field(description="Compute endpoint ID where boost_corr should run"),
     ] = config.DEFAULT_COMPUTE_ENDPOINT,
 ) -> XPCSBoostCorrSubmitResponse:
-    """Run Boost Corr on one or more raw datasets with the given qmap parateter file.
+    """Run Boost Corr on one raw dataset with the given qmap parateter file.
 
-    Each raw file is submitted as an individual compute job. The executor batches the
-    submissions internally, and this tool returns the UUID for each submitted task. Poll the
-    returned task_uuids with globus_compute_get_task_status to monitor progress and retrieve
-    the completed task results, including output_file.
+    This tool submits one compute job and returns immediately with the submitted task_id and
+    task_group_id. Use globus_compute_get_task_status with
+    task UUIDs from your client-side tracking to monitor progress and retrieve completed task
+    results, including output_file.
 
     Make sure source data is on the compute endpoint filesystem before running boost_corr.
     The boost_corr executable will not transfer data for you.
@@ -233,30 +206,49 @@ def run_xpcs_boost_corr(
     For example, you cannot run boost corr on data in /8IDI/2025-2/, you must transfer it to eagle
     first.
     """
-    try:
-        client = get_compute_client(ctx)
-        endpoint_config = config.get_endpoint(compute_endpoint_id)
-        if endpoint_config is None:
-            raise ToolError(f"Unknown compute endpoint ID '{compute_endpoint_id}'")
+    client = get_compute_client(ctx)
+    endpoint_config = config.get_endpoint(compute_endpoint_id)
+    if endpoint_config is None:
+        raise ToolError(f"Unknown compute endpoint ID '{compute_endpoint_id}'")
 
-        with Executor(
-            endpoint_id=compute_endpoint_id,
-            client=client,
-            user_endpoint_config=endpoint_config["config"],
-        ) as executor:
-            futures = [
-                executor.submit(  # type: ignore[no-untyped-call]
-                    _compute_run_boost_corr_executable,
-                    raw=raw_file,
-                    qmap=qmap,
-                    extra_boost_corr_params=extra_boost_corr_params,
-                    flow_debug=flow_debug,
-                )
-                for raw_file in raw
-            ]
-            return XPCSBoostCorrSubmitResponse(task_uuids=_wait_for_task_ids(futures))
-    except Exception as e:
-        raise ToolError(f"Failed to run boost_corr compute function: {e}") from e
+    for raw in raw_files:
+        if not config.compute_path_in_allowed_basepaths(compute_endpoint_id, raw):
+            raise ToolError(
+                f"Raw file '{raw}' is not under an allowed basepath for compute endpoint "
+                f"'{compute_endpoint_id}'"
+            )
+
+    batch = client.create_batch(user_endpoint_config=endpoint_config["config"])
+    function_id = register_function(_compute_run_boost_corr_executable, client)
+    for raw in raw_files:
+        batch.add(
+            function_id,
+            (),
+            {
+                "raw": raw,
+                "qmap": qmap,
+                "extra_boost_corr_params": extra_boost_corr_params,
+                "flow_debug": flow_debug,
+            },
+        )
+
+    try:
+        res = client.batch_run(compute_endpoint_id, batch)
+    except globus_sdk.GlobusAPIError as e:
+        raise ToolError(f"Failed to submit task: {e}") from e
+
+    task_ids = res.get("tasks", {}).get(function_id)
+    if not task_ids:
+        raise ToolError(f"Failed to retrieve task IDs for function '{function_id}'")
+
+    task_group_id = res.get("task_group_id")
+    if not task_group_id:
+        raise ToolError(f"Failed to retrieve task_group_id for function '{function_id}'")
+
+    return XPCSBoostCorrSubmitResponse(
+        task_ids=task_ids,
+        task_group_id=task_group_id,
+    )
 
 
 def _get_boost_corr_metadata(
