@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import copy
 import json
+import logging
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
+
+log = logging.getLogger(__name__)
 
 USER_CONFIG_PATH = Path("~/.globus-mcp-xpcs.json").expanduser()
 
@@ -131,3 +134,21 @@ def load_user_config(config_path: Path | None = None) -> None:
         raise ValueError("Config file must be a JSON object")
 
     _apply_config_payload(payload)
+
+
+def compute_path_in_allowed_basepaths(endpoint_id: str, path: str) -> bool:
+    """
+    Check if a given path is within the allowed basepaths for a specific Globus Compute endpoint.
+    """
+    endpoint = get_endpoint(endpoint_id)
+    if not endpoint:
+        log.error(f"Endpoint {endpoint_id} not found in configuration.")
+        return False
+
+    allowed_basepaths = endpoint.get("allowed_basepaths", [])
+    for basepath in allowed_basepaths:
+        basepath_str = basepath.get("path")
+        if basepath_str and path.startswith(basepath_str):
+            return True
+
+    return False
