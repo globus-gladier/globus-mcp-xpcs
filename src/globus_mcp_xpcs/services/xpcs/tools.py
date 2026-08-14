@@ -77,9 +77,12 @@ def _compute_run_boost_corr_executable(
     completed = subprocess.run(cmd, capture_output=True, text=True)
     execution_time_seconds = round(time.time() - start_time, 2)
 
-    (output_dir / "boost_corr.log").write_text(completed.stdout)
-    (output_dir / "boost_corr_err.log").write_text(completed.stderr)
-    (output_dir / "corr_metadata_output.json").write_text(
+    name = pathlib.Path(raw).name
+    logs_dir = output_dir.parent / f"{output_dir.name}_logs" / name
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    (logs_dir / "boost_corr.log").write_text(completed.stdout)
+    (logs_dir / "boost_corr_err.log").write_text(completed.stderr)
+    (logs_dir / "corr_metadata_output.json").write_text(
         json.dumps(
             {
                 "boost_corr": boost_corr,
@@ -149,7 +152,8 @@ def run_xpcs_boost_corr(
 ) -> XPCSBoostCorrSubmitResponse:
     """Run Boost Corr on one raw dataset with the given qmap parateter file.
 
-    This tool submits one compute job and returns immediately with the submitted task_id and
+    This tool submits a list of raw files to a Globus Compute endpoint for processing with the
+    boost_corr executable. It returns a list of task UUIDs and a task
     task_group_id. Use globus_compute_get_task_status with
     task UUIDs from your client-side tracking to monitor progress and retrieve completed task
     results, including output_file.
