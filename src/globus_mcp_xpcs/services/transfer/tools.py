@@ -5,7 +5,7 @@ import time
 from collections.abc import Callable
 from functools import lru_cache
 from http import HTTPStatus
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any
 
 import globus_sdk
 from mcp.server.fastmcp import Context
@@ -223,83 +223,6 @@ def _assert_collection_path_allowed(collection_id: str, path: str, permission: s
         )
 
 
-def globus_transfer_list_endpoints_and_collections(
-    filter_scope: Annotated[
-        Literal[
-            "my-endpoints",
-            "administered-by-me",
-            "shared-with-me",
-            "shared-by-me",
-            "recently-used",
-            "in-use",
-        ],
-        Field(
-            description=(
-                "String indicating which scope/class of endpoints and collections to list."
-                " Options:"
-                " my-endpoints (owned by the user),"
-                " administered-by-me (user has admin role, superset of my-endpoints),"
-                " shared-with-me (shared with user),"
-                " shared-by-me (guest collections where user is admin or access manager),"
-                " recently-used (recently used by user),"
-                " in-use (with active tasks owned by user),"
-            ),
-        ),
-    ],
-    limit: Annotated[
-        int,
-        Field(default=100, le=100, description="Maximum number of results to return."),
-    ],
-    offset: Annotated[int, Field(default=0, description="Zero based offset into the result set.")],
-    ctx: Context[ServerSession, GlobusContext],
-) -> TransferEndpointList:
-    """List Globus Transfer endpoints and collections that the user has access to, filtered based
-    on the provided scope.
-    """
-    client = get_transfer_client(ctx)
-
-    try:
-        res = client.endpoint_search(
-            filter_scope=filter_scope,
-            limit=limit,
-            offset=offset,
-        )
-    except globus_sdk.GlobusAPIError as e:
-        raise ToolError(f"Failed to get search results: {e}") from e
-
-    return _format_search_response(res)
-
-
-def globus_transfer_search_endpoints_and_collections(
-    filter_fulltext: Annotated[
-        str,
-        Field(min_length=1, description=("String to match endpoint fields against.")),
-    ],
-    limit: Annotated[
-        int,
-        Field(default=100, le=100, description="Maximum number of results to return."),
-    ],
-    offset: Annotated[int, Field(default=0, description="Zero based offset into the result set.")],
-    ctx: Context[ServerSession, GlobusContext],
-) -> TransferEndpointList:
-    """Use a filter string to search all Globus Transfer endpoints and collections that
-    are visible to the user.
-    """
-    client = get_transfer_client(ctx)
-
-    try:
-        res = client.endpoint_search(
-            filter_scope="all",
-            filter_fulltext=filter_fulltext,
-            limit=limit,
-            offset=offset,
-        )
-    except globus_sdk.GlobusAPIError as e:
-        raise ToolError(f"Failed to get search results: {e}") from e
-
-    return _format_search_response(res)
-
-
 async def globus_transfer_submit_task(
     source_collection_id: Annotated[str, Field(description="ID of the source collection")],
     destination_collection_id: Annotated[
@@ -514,11 +437,9 @@ def list_collections() -> list[CollectionInfo]:
 
 
 ALL_TRANSFER_TOOLS: list[Callable[..., Any]] = [
-    globus_transfer_search_endpoints_and_collections,
-    globus_transfer_list_endpoints_and_collections,
-    # globus_transfer_submit_task,
+    globus_transfer_submit_task,
     globus_transfer_get_task_events,
     globus_transfer_get_task_progress,
-    # globus_transfer_list_directory,
+    globus_transfer_list_directory,
     list_collections,
 ]
