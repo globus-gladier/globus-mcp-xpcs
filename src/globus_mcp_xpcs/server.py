@@ -1,5 +1,6 @@
 import argparse
 import logging
+import logging.config
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -21,14 +22,25 @@ transports = ["streamable-http", "stdio"]
 
 
 def _configure_console_logging() -> None:
-    root_logger = logging.getLogger()
-    if not root_logger.handlers:
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-        )
-    else:
-        root_logger.setLevel(logging.INFO)
+    logging.config.dictConfig(
+        {
+            "version": 1,
+            "formatters": {
+                "basic": {"format": "[%(levelname)s] %(name)s::%(funcName)s() %(message)s"}
+            },
+            "handlers": {
+                "console": {
+                    "class": "logging.StreamHandler",
+                    "level": "DEBUG",
+                    "formatter": "basic",
+                }
+            },
+            "loggers": {
+                "globus_mcp_xpcs": {"level": "DEBUG", "handlers": ["console"]},
+            },
+        }
+    )
+    log.debug("Console logging configured.")
 
 
 def parse_arguments() -> argparse.Namespace:
