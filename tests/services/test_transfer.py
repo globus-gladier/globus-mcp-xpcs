@@ -21,8 +21,6 @@ from globus_mcp_xpcs.services.transfer.tools import (
     globus_transfer_get_task_events,
     globus_transfer_get_task_progress,
     globus_transfer_list_directory,
-    globus_transfer_list_endpoints_and_collections,
-    globus_transfer_search_endpoints_and_collections,
     globus_transfer_submit_task,
 )
 from tests.utils import random_string
@@ -164,89 +162,6 @@ def test_format_search_response():
         assert ep.owner_string == ep_data["owner_string"]
         assert ep.type == ep_data["entity_type"]
         assert ep.description == ep_data["description"]
-
-
-def test_globus_transfer_list_endpoints_and_collections(
-    mock_ctx: Mock, mock_client: Mock, mock_format_search_res: Mock
-):
-    limit = random.randint(1, 100)
-    offset = random.randint(0, 100)
-
-    search_res = Mock()
-    formatted_res = Mock()
-    mock_client.endpoint_search.return_value = search_res
-    mock_format_search_res.return_value = formatted_res
-
-    filter_scope = random_string()
-    res = globus_transfer_list_endpoints_and_collections(
-        filter_scope=filter_scope,
-        limit=limit,
-        offset=offset,
-        ctx=mock_ctx,
-    )
-
-    mock_client.endpoint_search.assert_called_once_with(
-        filter_scope=filter_scope,
-        limit=limit,
-        offset=offset,
-    )
-    mock_format_search_res.assert_called_once_with(search_res)
-    assert res == formatted_res
-
-
-def test_globus_transfer_list_endpoints_and_collections_api_error(
-    mock_ctx: Mock, mock_client: Mock
-):
-    mock_client.endpoint_search.side_effect = GlobusAPIError(r=MagicMock())
-    with pytest.raises(ToolError, match="Failed to get search results"):
-        globus_transfer_list_endpoints_and_collections(
-            filter_scope=random_string(),
-            limit=100,
-            offset=0,
-            ctx=mock_ctx,
-        )
-
-
-def test_globus_transfer_search_endpoints_and_collections(
-    mock_ctx: Mock, mock_client: Mock, mock_format_search_res: Mock
-):
-    limit = random.randint(1, 100)
-    offset = random.randint(0, 100)
-
-    search_res = Mock()
-    formatted_res = Mock()
-    mock_client.endpoint_search.return_value = search_res
-    mock_format_search_res.return_value = formatted_res
-
-    filter_fulltext = random_string()
-    res = globus_transfer_search_endpoints_and_collections(
-        filter_fulltext=filter_fulltext,
-        limit=limit,
-        offset=offset,
-        ctx=mock_ctx,
-    )
-
-    mock_client.endpoint_search.assert_called_once_with(
-        filter_scope="all",
-        filter_fulltext=filter_fulltext,
-        limit=limit,
-        offset=offset,
-    )
-    mock_format_search_res.assert_called_once_with(search_res)
-    assert res == formatted_res
-
-
-def test_globus_transfer_search_endpoints_and_collections_api_error(
-    mock_ctx: Mock, mock_client: Mock
-):
-    mock_client.endpoint_search.side_effect = GlobusAPIError(r=MagicMock())
-    with pytest.raises(ToolError, match="Failed to get search results"):
-        globus_transfer_search_endpoints_and_collections(
-            filter_fulltext=random_string(),
-            limit=100,
-            offset=0,
-            ctx=mock_ctx,
-        )
 
 
 @pytest.mark.asyncio

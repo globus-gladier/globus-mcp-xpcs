@@ -1,23 +1,52 @@
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from mcp.server.fastmcp.exceptions import ToolError
 
 from globus_mcp_xpcs.services.xpcs.tools import (
     _compute_run_boost_corr_executable,
-    _wait_for_task_ids,
     run_xpcs_boost_corr,
 )
 
 
-def test_run_xpcs_boost_corr_submits_one_job_per_raw_file(mock_ctx: Mock):
+def test_run_xpcs_boost_corr_submits_one_job(mock_ctx: Mock):
     mock_client = Mock()
-    mock_executor = MagicMock()
-    mock_executor.__enter__.return_value = mock_executor
-    mock_executor.submit.side_effect = [
-        Mock(task_id="task-1"),
-        Mock(task_id="task-2"),
-    ]
+    mock_batch = Mock()
+    mock_client.create_batch.return_value = mock_batch
+    mock_client.batch_run.return_value = {
+        "tasks": {"function-1": ["task-1"]},
+        "task_group_id": "group-1",
+    }
+    valid_raw = "/eagle/APSDataProcessing/aps8idi/xpcs_staging/agentic-testing/raw-1.h5"
+
+    with (
+        patch("globus_mcp_xpcs.services.xpcs.tools.get_compute_client", return_value=mock_client),
+        patch(
+            "globus_mcp_xpcs.services.xpcs.tools.config.get_endpoint",
+            return_value={
+                "config": {"queue": "debug"},
+            },
+        ),
+        patch(
+            "globus_mcp_xpcs.services.xpcs.tools.config.compute_path_in_allowed_basepaths",
+            return_value=True,
+        ),
+        patch("globus_mcp_xpcs.services.xpcs.tools.register_function", return_value="function-1"),
+    ):
+        res = run_xpcs_boost_corr(
+            raw_files=[valid_raw],
+            qmap="/path/to/qmap.hdf",
+            ctx=mock_ctx,
+            compute_endpoint_id="endpoint-1",
+        )
+
+    assert res.task_ids == ["task-1"]
+    assert res.task_group_id == "group-1"
+    mock_batch.add.assert_called_once()
+
+
+def test_run_xpcs_boost_corr_rejects_path_not_in_allowed_basepaths(mock_ctx: Mock):
+    mock_client = Mock()
 
     with (
         patch("globus_mcp_xpcs.services.xpcs.tools.get_compute_client", return_value=mock_client),
@@ -25,83 +54,83 @@ def test_run_xpcs_boost_corr_submits_one_job_per_raw_file(mock_ctx: Mock):
             "globus_mcp_xpcs.services.xpcs.tools.config.get_endpoint",
             return_value={"config": {"queue": "debug"}},
         ),
-        patch("globus_mcp_xpcs.services.xpcs.tools.Executor", return_value=mock_executor),
+        patch(
+            "globus_mcp_xpcs.services.xpcs.tools.config.compute_path_in_allowed_basepaths",
+            return_value=False,
+        ),
     ):
-        res = run_xpcs_boost_corr(
-            raw=["/path/to/raw-1.h5", "/path/to/raw-2.h5"],
-            qmap="/path/to/qmap.hdf",
-            ctx=mock_ctx,
-        )
-
-    assert res.task_uuids == ["task-1", "task-2"]
-    assert mock_executor.submit.call_count == 2
-    mock_executor.submit.assert_any_call(
-        _compute_run_boost_corr_executable,
-        raw="/path/to/raw-1.h5",
-        qmap="/path/to/qmap.hdf",
-        extra_boost_corr_params=None,
-        flow_debug=False,
-    )
-    mock_executor.submit.assert_any_call(
-        _compute_run_boost_corr_executable,
-        raw="/path/to/raw-2.h5",
-        qmap="/path/to/qmap.hdf",
-        extra_boost_corr_params=None,
-        flow_debug=False,
-    )
+        with pytest.raises(ToolError, match="not under an allowed basepath"):
+            run_xpcs_boost_corr(
+                raw_files=["/tmp/other/raw-1.h5"],
+                qmap="/path/to/qmap.hdf",
+                ctx=mock_ctx,
+                compute_endpoint_id="endpoint-1",
+            )
 
 
-def test_wait_for_task_ids_waits_for_delayed_ids():
-    class DelayedFuture:
-        def __init__(self, values: list[str | None]):
-            self._values = values
-            self._index = 0
+def test_run_xpcs_boost_corr_missing_task_id_raises(mock_ctx: Mock):
+    mock_client = Mock()
+    mock_batch = Mock()
+    mock_client.create_batch.return_value = mock_batch
+    mock_client.batch_run.return_value = {"tasks": {"function-1": None}, "task_group_id": "group-1"}
 
-        @property
-        def task_id(self) -> str | None:
-            value = self._values[min(self._index, len(self._values) - 1)]
-            self._index += 1
-            return value
+    with (
+        patch("globus_mcp_xpcs.services.xpcs.tools.get_compute_client", return_value=mock_client),
+        patch(
+            "globus_mcp_xpcs.services.xpcs.tools.config.get_endpoint",
+            return_value={
+                "config": {"queue": "debug"},
+            },
+        ),
+        patch(
+            "globus_mcp_xpcs.services.xpcs.tools.config.compute_path_in_allowed_basepaths",
+            return_value=True,
+        ),
+        patch("globus_mcp_xpcs.services.xpcs.tools.register_function", return_value="function-1"),
+    ):
+        with pytest.raises(ToolError, match="Failed to retrieve task IDs"):
+            run_xpcs_boost_corr(
+                raw_files=[
+                    "/eagle/APSDataProcessing/aps8idi/xpcs_staging/agentic-testing/raw-1.h5"
+                ],
+                qmap="/path/to/qmap.hdf",
+                ctx=mock_ctx,
+                compute_endpoint_id="endpoint-1",
+            )
 
-    futures = [
-        DelayedFuture([None, "task-1"]),
-        DelayedFuture([None, None, "task-2"]),
-    ]
 
-    with patch("globus_mcp_xpcs.services.xpcs.tools.time.sleep", return_value=None):
-        task_ids = _wait_for_task_ids(futures, timeout_seconds=1.0, polling_interval_seconds=0.001)
+def test_run_xpcs_boost_corr_missing_task_group_id_raises(mock_ctx: Mock):
+    mock_client = Mock()
+    mock_batch = Mock()
+    mock_client.create_batch.return_value = mock_batch
+    mock_client.batch_run.return_value = {
+        "tasks": {"function-1": ["task-1"]},
+        "task_group_id": None,
+    }
 
-    assert task_ids == ["task-1", "task-2"]
-
-
-def test_wait_for_task_ids_timeout():
-    future = Mock(task_id=None)
-
-    with pytest.raises(ToolError, match="Timed out waiting for Globus Compute task IDs"):
-        _wait_for_task_ids([future], timeout_seconds=0.01, polling_interval_seconds=0.001)
-
-
-def test_wait_for_task_ids_timeout_returns_available_ids():
-    class DelayedFuture:
-        def __init__(self, values: list[str | None]):
-            self._values = values
-            self._index = 0
-
-        @property
-        def task_id(self) -> str | None:
-            value = self._values[min(self._index, len(self._values) - 1)]
-            self._index += 1
-            return value
-
-    futures = [
-        DelayedFuture([None, "task-1"]),
-        DelayedFuture([None, None, None]),
-    ]
-
-    with patch("globus_mcp_xpcs.services.xpcs.tools.time.sleep", return_value=None):
-        task_ids = _wait_for_task_ids(futures, timeout_seconds=0.001, polling_interval_seconds=0.0)
-
-    assert task_ids == ["task-1"]
+    with (
+        patch("globus_mcp_xpcs.services.xpcs.tools.get_compute_client", return_value=mock_client),
+        patch(
+            "globus_mcp_xpcs.services.xpcs.tools.config.get_endpoint",
+            return_value={
+                "config": {"queue": "debug"},
+            },
+        ),
+        patch(
+            "globus_mcp_xpcs.services.xpcs.tools.config.compute_path_in_allowed_basepaths",
+            return_value=True,
+        ),
+        patch("globus_mcp_xpcs.services.xpcs.tools.register_function", return_value="function-1"),
+    ):
+        with pytest.raises(ToolError, match="Failed to retrieve task_group_id"):
+            run_xpcs_boost_corr(
+                raw_files=[
+                    "/eagle/APSDataProcessing/aps8idi/xpcs_staging/agentic-testing/raw-1.h5"
+                ],
+                qmap="/path/to/qmap.hdf",
+                ctx=mock_ctx,
+                compute_endpoint_id="endpoint-1",
+            )
 
 
 def test_compute_run_boost_corr_executable_returns_output_file(tmp_path):

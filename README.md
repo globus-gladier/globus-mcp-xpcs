@@ -23,8 +23,8 @@ Run Twotime analysis for cycle 2026-2, foster202606, prefix from F1173 to F1179,
 ### XPCS
 
 - `run_xpcs_boost_corr` - Submit a compute function that executes the `boost_corr` executable
-  using a list of `raw` files and a shared `qmap` input; returns task UUIDs for each job.
-  Poll them with `globus_compute_get_task_status`.
+  using one `raw` file and a shared `qmap` input; returns `task_id` and `task_group_id`
+  from the submitted compute job.
 - `get_boost_corr_metadata` - Generate metadata from a `boost_corr` output HDF file
 - `get_generic_metadata` - Read all HDF5 attributes from an output file in a JSON-serializable format
 - `list_xpcs_collections` - List configured XPCS collections and allowed basepaths/permissions

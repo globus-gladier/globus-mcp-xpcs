@@ -14,6 +14,8 @@ from globus_mcp_xpcs.services.compute.client import get_compute_client
 from globus_mcp_xpcs.services.compute.registry import register_compute
 from globus_mcp_xpcs.services.compute.tools import (
     ALL_COMPUTE_TOOLS,
+    globus_compute_get_endpoint_metadata,
+    globus_compute_get_endpoint_status,
     globus_compute_get_task_status,
 )
 from tests.utils import random_string
@@ -136,3 +138,48 @@ async def test_globus_compute_get_task_status_deserialization_error(
     mock_client.fx_serializer.deserialize.side_effect = Exception
     with pytest.raises(ToolError, match="Unable to deserialize result"):
         await globus_compute_get_task_status(task_ids=[res_data["task_id"]], ctx=mock_ctx)
+
+
+def test_globus_compute_get_endpoint_status(mock_ctx: Mock, mock_client: Mock):
+    endpoint_id = str(uuid.uuid4())
+    status_data = {
+        "endpoint_id": endpoint_id,
+        "status": "online",
+        "detail": "worker heartbeat healthy",
+    }
+    mock_client.get_endpoint_status.return_value = status_data
+
+    res = globus_compute_get_endpoint_status(endpoint_id=endpoint_id, ctx=mock_ctx)
+
+    mock_client.get_endpoint_status.assert_called_once_with(endpoint_id)
+    assert res.status == "online"
+
+
+def test_globus_compute_get_endpoint_status_api_error(mock_ctx: Mock, mock_client: Mock):
+    endpoint_id = str(uuid.uuid4())
+    mock_client.get_endpoint_status.side_effect = GlobusAPIError(r=MagicMock())
+
+    with pytest.raises(ToolError, match="Failed to get endpoint status"):
+        globus_compute_get_endpoint_status(endpoint_id=endpoint_id, ctx=mock_ctx)
+
+
+def test_globus_compute_get_endpoint_metadata(mock_ctx: Mock, mock_client: Mock):
+    endpoint_id = str(uuid.uuid4())
+    metadata = {
+        "display_name": "xpcs-endpoint",
+        "public": False,
+    }
+    mock_client.get_endpoint_metadata.return_value = metadata
+
+    res = globus_compute_get_endpoint_metadata(endpoint_id=endpoint_id, ctx=mock_ctx)
+
+    mock_client.get_endpoint_metadata.assert_called_once_with(endpoint_id)
+    assert res.metadata == metadata
+
+
+def test_globus_compute_get_endpoint_metadata_api_error(mock_ctx: Mock, mock_client: Mock):
+    endpoint_id = str(uuid.uuid4())
+    mock_client.get_endpoint_metadata.side_effect = GlobusAPIError(r=MagicMock())
+
+    with pytest.raises(ToolError, match="Failed to get endpoint metadata"):
+        globus_compute_get_endpoint_metadata(endpoint_id=endpoint_id, ctx=mock_ctx)
