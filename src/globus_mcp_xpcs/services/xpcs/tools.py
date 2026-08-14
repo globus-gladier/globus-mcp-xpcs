@@ -457,7 +457,4 @@ ALL_XPCS_TOOLS: list[Callable[..., Any]] = [
     run_xpcs_boost_corr,
     get_boost_corr_metadata,
     get_generic_metadata,
-    # xpcs_ls_source,
-    # xpcs_transfer_data,
-    # globus_transfer_get_task_events,
 ]
