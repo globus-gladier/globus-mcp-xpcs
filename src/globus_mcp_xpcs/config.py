@@ -10,6 +10,7 @@ from typing import Any
 log = logging.getLogger(__name__)
 
 USER_CONFIG_PATH = Path("~/.globus-mcp-xpcs.json").expanduser()
+mcp_transfer_acls_enabled = True
 
 DEFAULT_COMPUTE_ENDPOINT = "d88919ea-026a-493e-9124-fe3c46defa54"
 COMPUTE_ENDPOINTS: list[dict[str, Any]] = [
@@ -22,7 +23,12 @@ COMPUTE_ENDPOINTS: list[dict[str, Any]] = [
             {
                 "path": "/eagle/APSDataProcessing/aps8idi/xpcs_staging/agentic-testing/",
                 "permissions": "rw",
-            }
+            },
+            {
+                "path": "/eagle/APSDataProcessing/aps8idi/xpcs_staging/"
+                "agentic-testing-twotime-src/",
+                "permissions": "r",
+            },
         ],
         "config": {
             "queue": "debug",
@@ -134,6 +140,15 @@ def load_user_config(config_path: Path | None = None) -> None:
         raise ValueError("Config file must be a JSON object")
 
     _apply_config_payload(payload)
+
+
+def set_mcp_transfer_acls_enabled(enabled: bool) -> None:
+    global mcp_transfer_acls_enabled
+    mcp_transfer_acls_enabled = enabled
+
+
+def is_mcp_transfer_acls_enabled() -> bool:
+    return mcp_transfer_acls_enabled
 
 
 def compute_path_in_allowed_basepaths(endpoint_id: str, path: str) -> bool:

@@ -74,6 +74,11 @@ def parse_arguments() -> argparse.Namespace:
         type=Path,
         help="Path to a JSON config file. Defaults to ~/.globus-mcp-xpcs.json.",
     )
+    parser.add_argument(
+        "--disable-mcp-transfer-acls",
+        action="store_true",
+        help="Disable MCP ACL checks for transfer operations.",
+    )
     return parser.parse_args()
 
 
@@ -84,7 +89,8 @@ def main() -> None:
 
     config_path = args.config or config.USER_CONFIG_PATH
     log.info("Using config file: %s", config_path)
-    config.load_user_config(args.config)
+    config.load_user_config(config_path)
+    config.set_mcp_transfer_acls_enabled(not args.disable_mcp_transfer_acls)
 
     mcp = FastMCP(
         "Globus MCP Server",

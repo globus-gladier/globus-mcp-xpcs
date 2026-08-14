@@ -207,6 +207,9 @@ def _collection_has_access(collection_id: str, path: str, permission: str) -> bo
 
 
 def _assert_collection_path_allowed(collection_id: str, path: str, permission: str) -> None:
+    if not config.is_mcp_transfer_acls_enabled():
+        return
+
     collection = config.get_collection(collection_id)
     if collection is None:
         raise ToolError(f"Unknown collection_id '{collection_id}'")
@@ -418,19 +421,25 @@ def globus_transfer_list_directory(
 def list_collections() -> list[CollectionInfo]:
     """List the configured XPCS Globus Transfer collections and their allowed
     filesystem paths/permissions."""
+    acls_enabled = config.is_mcp_transfer_acls_enabled()
+
     return [
         CollectionInfo(
             uuid=col["uuid"],
             display_name=col["display_name"],
             description=col["description"],
             collection_basepath=col["collection_basepath"],
-            allowed_basepaths=[
-                CollectionBasepath(
-                    path=bp["path"],
-                    permissions=bp["permissions"],
-                )
-                for bp in col.get("allowed_basepaths", [])
-            ],
+            allowed_basepaths=(
+                [CollectionBasepath(path="/", permissions="rw")]
+                if not acls_enabled
+                else [
+                    CollectionBasepath(
+                        path=bp["path"],
+                        permissions=bp["permissions"],
+                    )
+                    for bp in col.get("allowed_basepaths", [])
+                ]
+            ),
         )
         for col in config.COLLECTIONS
     ]

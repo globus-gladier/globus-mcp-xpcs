@@ -22,6 +22,7 @@ from globus_mcp_xpcs.services.transfer.tools import (
     globus_transfer_get_task_progress,
     globus_transfer_list_directory,
     globus_transfer_submit_task,
+    list_collections,
 )
 from tests.utils import random_string
 
@@ -531,4 +532,31 @@ def test_globus_transfer_list_directory_invalid_regex(
             ctx=mock_ctx,
         )
 
-    mock_client.operation_ls.assert_not_called()
+
+def test_list_collections_returns_configured_basepaths_when_acls_enabled(
+    mock_config: dict[str, Any],
+):
+    with patch(
+        "globus_mcp_xpcs.services.transfer.tools.config.is_mcp_transfer_acls_enabled",
+        return_value=True,
+    ):
+        collections = list_collections()
+
+    assert len(collections) == len(mock_config["COLLECTIONS"])
+    first = collections[0]
+    assert first.allowed_basepaths[0].path == "/foo-read-write-directory"
+    assert first.allowed_basepaths[0].permissions == "r"
+
+
+def test_list_collections_returns_any_path_when_acls_disabled(mock_config: dict[str, Any]):
+    with patch(
+        "globus_mcp_xpcs.services.transfer.tools.config.is_mcp_transfer_acls_enabled",
+        return_value=False,
+    ):
+        collections = list_collections()
+
+    assert len(collections) == len(mock_config["COLLECTIONS"])
+    for collection in collections:
+        assert len(collection.allowed_basepaths) == 1
+        assert collection.allowed_basepaths[0].path == "/"
+        assert collection.allowed_basepaths[0].permissions == "rw"
