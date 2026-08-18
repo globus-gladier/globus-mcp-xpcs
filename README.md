@@ -17,34 +17,35 @@ Run Multitau analysis for cycle 2026-2, tingxu202606, prefix Ib1202, with suffix
 Run Twotime analysis for cycle 2026-2, foster202606, prefix from F1173 to F1179, using designated qmaps for each measurement.
 
 
-
 ## Supported Tools
+
+The main supported tool is the xpcs Boost Corr tool below. The transfer tools support stanging data and moving it
+into place so the boost corr work can be carried out, and results can be transferred back to voyager.
+
+Let us know if you want other boost corr tooling!
 
 ### XPCS
 
 - `run_xpcs_boost_corr` - Submit a compute function that executes the `boost_corr` executable
   using one `raw` file and a shared `qmap` input; returns `task_id` and `task_group_id`
   from the submitted compute job.
-- `get_boost_corr_metadata` - Generate metadata from a `boost_corr` output HDF file
-- `get_generic_metadata` - Read all HDF5 attributes from an output file in a JSON-serializable format
-- `list_xpcs_collections` - List configured XPCS collections and allowed basepaths/permissions
-- `list_xpcs_compute_endpoints` - List configured XPCS compute endpoints and allowed basepaths/permissions
 
 ### [Globus Transfer](https://docs.globus.org/api/transfer/)
 
-- `globus_transfer_list_endpoints_and_collections` - List endpoints and collections the user can access
-- `globus_transfer_search_endpoints_and_collections` - Search visible endpoints and collections
 - `globus_transfer_submit_task` - Submit a transfer task, await completion/timeout, and return status plus recent events
 - `globus_transfer_get_task_events` - Get task events for transfer progress and troubleshooting
 - `globus_transfer_get_task_progress` - Wait for transfer progress and return task status plus recent events
 - `globus_transfer_list_directory` - List directory contents on a collection; `filename_regex`
   filtering applies before `limit` and `offset` pagination; `cached` defaults to `true`
   and can be set to `false` to force a fresh listing
+- `list_xpcs_collections` - List configured XPCS collections and allowed basepaths/permissions
 
-Notes:
-- `globus_transfer_list_directory` applies `filename_regex` before pagination, so narrow queries can
-  still return matches without raising `limit`.
-This README intentionally documents only XPCS and Transfer tools. Compute service tools are omitted.
+### Globus Compute
+
+- `list_xpcs_compute_endpoints` - List configured XPCS compute endpoints and allowed basepaths/permissions
+- `globus_compute_get_task_status` - Get status of current compute tasks started with run_xpcs_boost_corr
+- `globus_compute_get_endpoint_status` - Get the status of a configured Globus Compute Endpoint
+- `globus_compute_get_endpoint_metadata` - Get endpoint metadata of a configured Globus Compute Endpoint
 
 ## Client Configuration
 
