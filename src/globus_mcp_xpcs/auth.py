@@ -17,7 +17,12 @@ def get_globus_app() -> globus_sdk.GlobusApp:
 
     if client_id and client_secret:
         return globus_sdk.ClientApp(
-            app_name=app_name, client_id=client_id, client_secret=client_secret
+            app_name=app_name,
+            client_id=client_id,
+            client_secret=client_secret,
+            config=globus_sdk.GlobusAppConfig(
+                auto_redrive_gares=True,
+            ),
         )
     else:
         raise ValueError(

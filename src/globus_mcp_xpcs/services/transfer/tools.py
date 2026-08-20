@@ -3,7 +3,6 @@ import pathlib
 import re
 from collections.abc import Callable
 from functools import lru_cache
-from http import HTTPStatus
 from typing import Annotated, Any
 
 import globus_sdk
@@ -27,23 +26,6 @@ from globus_mcp_xpcs.services.transfer.schemas import (
 _TRANSFER_LS_PAGE_SIZE = 100_000
 
 log = logging.getLogger(__name__)
-
-
-def _handle_gare(
-    client_method: Callable[..., globus_sdk.GlobusHTTPResponse],
-    *args: Any,
-    **kwargs: Any,
-) -> globus_sdk.GlobusHTTPResponse:
-    client: globus_sdk.TransferClient = client_method.__self__  # type: ignore[attr-defined]
-    try:
-        return client_method(*args, **kwargs)
-    except globus_sdk.GlobusAPIError as e:
-        if e.http_status == HTTPStatus.FORBIDDEN and e.code == "ConsentRequired":
-            scopes = e.info.consent_required.required_scopes
-            for scope in scopes:
-                client.add_app_scope(scope)
-            return client_method(*args, **kwargs)
-        raise
 
 
 def _format_task_events_response(res: globus_sdk.IterableTransferResponse) -> TransferEventList:
@@ -203,7 +185,7 @@ def globus_transfer_submit_task(
         )
 
     try:
-        res = _handle_gare(client.submit_transfer, data)
+        res = client.submit_transfer(data)
 
         return TransferTaskProgress(
             task_id=res.data["task_id"],
@@ -250,7 +232,7 @@ def globus_transfer_get_task_progress(
     """
     client = get_transfer_client(ctx)
     try:
-        res = _handle_gare(client.get_task, task_id)
+        res = client.get_task(task_id)
         return TransferTaskProgress(
             task_id=res.data["task_id"],
             completed=res.data.get("status", "").upper() in {"SUCCEEDED", "FAILED"},
@@ -277,7 +259,7 @@ def globus_transfer_task_list(
     """
     client = get_transfer_client(ctx)
     try:
-        res = _handle_gare(client.task_list, limit=limit)
+        res = client.task_list(limit=limit)
         return TransferTaskProgress(
             task_id=res.data["task_id"],
             completed=res.data.get("status", "").upper() in {"SUCCEEDED", "FAILED"},

@@ -1,6 +1,5 @@
 import random
 import uuid
-from http import HTTPStatus
 from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
@@ -15,7 +14,6 @@ from globus_mcp_xpcs.services.transfer.client import get_transfer_client
 from globus_mcp_xpcs.services.transfer.registry import register_transfer
 from globus_mcp_xpcs.services.transfer.tools import (
     ALL_TRANSFER_TOOLS,
-    _handle_gare,
     _list_directory_entries_cached,
     globus_transfer_get_task_events,
     globus_transfer_get_task_progress,
@@ -32,12 +30,6 @@ def mock_client():
         mc = Mock(spec=TransferClient)
         mock_get_client.return_value = mc
         yield mc
-
-
-@pytest.fixture
-def mock_handle_gare():
-    with patch("globus_mcp_xpcs.services.transfer.tools._handle_gare") as _mock_handle_gare:
-        yield _mock_handle_gare
 
 
 @pytest.fixture
@@ -75,58 +67,8 @@ def test_get_transfer_client(mock_ctx: Mock):
     assert client_2 is client, "Client should be cached"
 
 
-def test_handle_gare_happy_path(mock_client: Mock):
-    res_data = random_string()
-    mock_client.some_method = Mock()
-    mock_client.some_method.return_value = res_data
-    mock_client.some_method.__self__ = mock_client
-
-    args = [random_string() for _ in range(random.randint(1, 10))]
-    kwargs = {random_string(): random_string() for _ in range(random.randint(1, 10))}
-    res = _handle_gare(mock_client.some_method, *args, **kwargs)
-
-    assert res == res_data
-    mock_client.some_method.assert_called_once_with(*args, **kwargs)
-
-
-def test_handle_gare_consent_required(mock_client: Mock):
-    error = GlobusAPIError(r=MagicMock())
-    error.http_status = HTTPStatus.FORBIDDEN
-    error.code = "ConsentRequired"
-    required_scopes = [random_string() for _ in range(random.randint(1, 10))]
-    error.info.consent_required.required_scopes = required_scopes
-
-    res_data = random_string()
-    mock_client.some_method = Mock()
-    mock_client.some_method.side_effect = [error, res_data]
-    mock_client.some_method.__self__ = mock_client
-
-    args = [random_string() for _ in range(random.randint(1, 10))]
-    kwargs = {random_string(): random_string() for _ in range(random.randint(1, 10))}
-    res = _handle_gare(mock_client.some_method, *args, **kwargs)
-
-    assert res == res_data
-    assert mock_client.some_method.call_count == 2
-    mock_client.some_method.assert_called_with(*args, **kwargs)
-    added_scopes = [s[0][0] for s in mock_client.add_app_scope.call_args_list]
-    for scope in required_scopes:
-        assert scope in added_scopes
-
-
-def test_handle_gare_unexpected_error(mock_client: Mock):
-    error = GlobusAPIError(r=MagicMock())
-    error.http_status = HTTPStatus.INTERNAL_SERVER_ERROR
-
-    mock_client.some_method = Mock()
-    mock_client.some_method.side_effect = error
-    mock_client.some_method.__self__ = mock_client
-
-    with pytest.raises(GlobusAPIError):
-        _handle_gare(mock_client.some_method)
-
-
 def test_globus_transfer_submit_task(
-    mock_ctx: Mock, mock_client: Mock, mock_handle_gare: Mock, mock_config: dict[str, Any]
+    mock_ctx: Mock, mock_client: Mock, mock_config: dict[str, Any]
 ):
     label = random_string()
     task_id = str(uuid.uuid4())
@@ -147,7 +89,7 @@ def test_globus_transfer_submit_task(
         recursive=False,
     )
 
-    mock_handle_gare.return_value = Mock(data={"task_id": task_id})
+    mock_client.submit_transfer.return_value = Mock(data={"task_id": task_id})
     mock_client.task_event_list.return_value = {
         "limit": 10,
         "offset": 0,
@@ -181,13 +123,13 @@ def test_globus_transfer_submit_task(
         ctx=mock_ctx,
     )
 
-    mock_handle_gare.assert_called_once_with(mock_client.submit_transfer, transfer_data)
+    mock_client.submit_transfer.assert_called_once_with(transfer_data)
 
 
 def test_globus_transfer_submit_task_api_error(
-    mock_ctx: Mock, mock_handle_gare: Mock, mock_config: dict[str, Any]
+    mock_ctx: Mock, mock_client: Mock, mock_config: dict[str, Any]
 ):
-    mock_handle_gare.side_effect = GlobusAPIError(r=MagicMock())
+    mock_client.submit_transfer.side_effect = GlobusAPIError(r=MagicMock())
     with pytest.raises(ToolError, match="Failed to submit transfer"):
         globus_transfer_submit_task(
             source_collection_id=mock_config["COLLECTIONS"][0]["uuid"],
