@@ -19,14 +19,14 @@ from globus_mcp_xpcs.services.transfer.schemas import (
     CollectionBasepath,
     CollectionInfo,
     TransferDirectoryListing,
-    TransferEndpoint,
-    TransferEndpointList,
     TransferEvent,
     TransferEventList,
     TransferTaskProgress,
 )
 
 _TRANSFER_LS_PAGE_SIZE = 100_000
+
+log = logging.getLogger(__name__)
 
 
 def _handle_gare(
@@ -44,28 +44,6 @@ def _handle_gare(
                 client.add_app_scope(scope)
             return client_method(*args, **kwargs)
         raise
-
-
-def _format_search_response(
-    res: globus_sdk.IterableTransferResponse,
-) -> TransferEndpointList:
-    endpoints = []
-    for e in res["DATA"]:
-        endpoint = TransferEndpoint(
-            endpoint_id=e["id"],
-            display_name=e["display_name"],
-            owner_id=e["owner_id"],
-            owner_string=e["owner_string"],
-            type=e["entity_type"],
-            description=e.get("description"),
-        )
-        endpoints.append(endpoint)
-    return TransferEndpointList(
-        limit=res["limit"],
-        offset=res["offset"],
-        has_next_page=res["has_next_page"],
-        data=endpoints,
-    )
 
 
 def _format_task_events_response(res: globus_sdk.IterableTransferResponse) -> TransferEventList:
@@ -197,21 +175,6 @@ def globus_transfer_submit_task(
         Field(default="Globus MCP Transfer", description="Label for the transfer task"),
     ],
     ctx: Context[ServerSession, GlobusContext],
-    timeout: Annotated[
-        int,
-        Field(default=600, ge=1, description="Maximum number of seconds to wait for completion."),
-    ] = 600,
-    polling_interval: Annotated[
-        int,
-        Field(default=10, ge=1, description="Seconds between status checks while waiting."),
-    ] = 10,
-    limit: Annotated[
-        int,
-        Field(default=10, le=1_000, description="Maximum number of events to return."),
-    ] = 10,
-    offset: Annotated[
-        int, Field(default=0, description="Zero based offset into the result set.")
-    ] = 0,
 ) -> TransferTaskProgress:
     """Submit a transfer task between two Globus Transfer collections.
 
