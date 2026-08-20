@@ -6,6 +6,7 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 from globus_mcp_xpcs import config
+from globus_mcp_xpcs.auth import is_client_creds_set
 from globus_mcp_xpcs.context import lifespan
 from globus_mcp_xpcs.services.compute.registry import register_compute
 from globus_mcp_xpcs.services.transfer.registry import register_transfer
@@ -99,6 +100,13 @@ def main() -> None:
         host=args.host,
         port=args.port,
     )
+
+    if is_client_creds_set() is False:
+        log.critical(
+            "Globus client credentials are not set. "
+            "Please set GLOBUS_CLIENT_ID and GLOBUS_CLIENT_SECRET environment variables."
+        )
+        return
 
     for service in args.services:
         service_registry[service](mcp)

@@ -1,4 +1,4 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 from mcp.server.fastmcp import Context
@@ -19,6 +19,12 @@ def mock_ctx(mock_app: Mock):
     ctx = Mock(spec=Context)
     ctx.request_context.lifespan_context = GlobusContext(app=mock_app)
     return ctx
+
+
+@pytest.fixture(autouse=True)
+def mock_client_creds_set():
+    with patch("globus_mcp_xpcs.server.is_client_creds_set", return_value=True):
+        yield
 
 
 @pytest.fixture

@@ -11,6 +11,11 @@ def _get_client_creds() -> tuple[str | None, str | None]:
     return client_id, client_secret
 
 
+def is_client_creds_set() -> bool:
+    client_id, client_secret = _get_client_creds()
+    return bool(client_id and client_secret)
+
+
 def get_globus_app() -> globus_sdk.GlobusApp:
     app_name = "Globus MCP Server"
     client_id, client_secret = _get_client_creds()
