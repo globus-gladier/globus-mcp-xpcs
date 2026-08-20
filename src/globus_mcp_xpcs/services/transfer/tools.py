@@ -1,7 +1,6 @@
-import asyncio
+import logging
 import pathlib
 import re
-import time
 from collections.abc import Callable
 from functools import lru_cache
 from http import HTTPStatus
@@ -226,7 +225,7 @@ def _assert_collection_path_allowed(collection_id: str, path: str, permission: s
         )
 
 
-async def globus_transfer_submit_task(
+def globus_transfer_submit_task(
     source_collection_id: Annotated[str, Field(description="ID of the source collection")],
     destination_collection_id: Annotated[
         str, Field(description="ID of the destination collection")
@@ -289,17 +288,18 @@ async def globus_transfer_submit_task(
 
     try:
         res = _handle_gare(client.submit_transfer, data)
+
+        return TransferTaskProgress(
+            task_id=res.data["task_id"],
+            completed=res.data.get("status", "").upper() in {"SUCCEEDED", "FAILED"},
+            task=res.data,
+            events=[],
+        )
     except globus_sdk.GlobusAPIError as e:
         raise ToolError(f"Failed to submit transfer: {e}") from e
-
-    return await _get_task_progress(
-        client=client,
-        task_id=res.data["task_id"],
-        timeout=timeout,
-        polling_interval=polling_interval,
-        limit=limit,
-        offset=offset,
-    )
+    except Exception as e:
+        log.exception("Unexpected error during transfer submission")
+        raise ToolError(f"Unexpected error during transfer submission: {e}") from e
 
 
 def globus_transfer_get_task_events(
